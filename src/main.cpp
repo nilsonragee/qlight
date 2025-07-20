@@ -17,7 +17,6 @@ Camera camera;
 Mouse mouse;
 Frame_Time frame_time;
 Screen screen;
-GPU_Info gpu_info;
 
 bool imgui_draw_edit_window = true;
 bool imgui_draw_demo_window = false;
@@ -374,168 +373,9 @@ int main()
 		StringViewArgument( renderer_device_name() )
 	);
 
-	/* DEMO SCENE START */
-	// const int vertices_amount = 4 * (3 + 3);
-	// const int indices_amount = 2 * 3;
-
-//	/*
-	float vertices[] = {
-		// Position           Normal
-		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-
-		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-
-		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-
-		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-
-		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-
-		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-		 0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
-	};
-
-	Shader_Source lighting_shader_source = parse_shader("resources/shaders/lighting.glsl");
-	unsigned int lighting_shader = create_shader(lighting_shader_source.vertex_shader, lighting_shader_source.fragment_shader);
-	if (lighting_shader) {
-		printf("Shader 'lighting' loaded.\n");
-	} else {
-		printf("Failed to load 'lighting' shader!\n");
-	}
-
-	Shader_Source light_object_shader_source = parse_shader("resources/shaders/light_object.glsl");
-	unsigned int light_object_shader = create_shader(light_object_shader_source.vertex_shader, light_object_shader_source.fragment_shader);
-	if (light_object_shader) {
-		printf("Shader 'light_object' loaded.\n");
-	} else {
-		printf("Failed to load 'light_object' shader!\n");
-	}
-
-	unsigned int vertex_buffer_object;
-	glGenBuffers(1, &vertex_buffer_object);
-
-	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_object);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-	//
-	// --- Cube ---
-	//
-	unsigned int object_vertex_array_object;
-	glGenVertexArrays(1, &object_vertex_array_object);
-	glBindVertexArray(object_vertex_array_object);
-
-	// position attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *) 0);
-	glEnableVertexAttribArray(0);
-
-	// normal attribute
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *) (3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
-
-	//
-	// --- Light cube ---
-	//
-	unsigned light_object_vertex_array_object;
-	glGenVertexArrays(1, &light_object_vertex_array_object);
-	glBindVertexArray(light_object_vertex_array_object);
-
-	// position attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *) 0);
-	glEnableVertexAttribArray(0);
-
-	//
-	// --- Coordinate Systems (3D Rendering) ---
-	//
-	glm::mat4 emissive_object_model = glm::mat4(1.0f);
-	glm::vec3 emissive_object_position = glm::vec3(2.0f, 1.5f, -2.0f);
-	float emissive_object_scale = 0.2f;
-
-	emissive_object_model = glm::translate(emissive_object_model, emissive_object_position);
-	emissive_object_model = glm::scale(emissive_object_model, glm::vec3(emissive_object_scale));
-
-	glm::mat4 reflective_object_model = glm::mat4(1.0f);
-	glm::vec3 reflective_object_position = glm::vec3(0.0f, 0.0f, 0.0f);
-	float reflective_object_scale = 1.0f;
-
-	reflective_object_model = glm::translate(reflective_object_model, reflective_object_position);
-	reflective_object_model = glm::scale(reflective_object_model, glm::vec3(reflective_object_scale));
-
-	glm::mat4 view = glm::mat4(1.0f);
-	glm::mat4 projection;
-
-	unsigned int lighting_model_location = glGetUniformLocation(lighting_shader, "model");
-	unsigned int lighting_view_location = glGetUniformLocation(lighting_shader, "view");
-	unsigned int lighting_projection_location = glGetUniformLocation(lighting_shader, "projection");
-
-	unsigned int light_object_model_location = glGetUniformLocation(light_object_shader, "model");
-	unsigned int light_object_view_location = glGetUniformLocation(light_object_shader, "view");
-	unsigned int light_object_projection_location = glGetUniformLocation(light_object_shader, "projection");
-
 	// Here we enable 'Z-buffer' to allow us render
 	// 3D objects without overwriting already rendered pixels.
-//	*/
 	glEnable(GL_DEPTH_TEST);
-
-	//
-	// --- Colors ---
-	//
-//	/*
-	glm::vec3 light_color(1.0f, 1.0f, 1.0f);
-
-	glm::vec3 cube_ambient = glm::vec3(0.3f);
-	glm::vec3 cube_diffuse; // Gets updated every frame.
-	glm::vec3 cube_specular; // Gets updated every frame.
-	float cube_shininess = 32.0f;
-
-	unsigned int lighting_material_ambient_location = glGetUniformLocation(lighting_shader, "material.ambient");
-	unsigned int lighting_material_diffuse_location = glGetUniformLocation(lighting_shader, "material.diffuse");
-	unsigned int lighting_material_specular_location = glGetUniformLocation(lighting_shader, "material.specular");
-	unsigned int lighting_material_shininess_location = glGetUniformLocation(lighting_shader, "material.shininess");
-
-	glm::vec3 cube_ambient_strength = glm::vec3(0.1f);
-	glm::vec3 cube_diffuse_strength = glm::vec3(0.5f);
-	glm::vec3 cube_specular_strength = glm::vec3(0.3f);
-
-	unsigned int lighting_light_ambient_location = glGetUniformLocation(lighting_shader, "light.ambient");
-	unsigned int lighting_light_diffuse_location = glGetUniformLocation(lighting_shader, "light.diffuse");
-	unsigned int lighting_light_specular_location = glGetUniformLocation(lighting_shader, "light.specular");
-
-	unsigned int lighting_view_position_location = glGetUniformLocation(lighting_shader, "view_position");
-	unsigned int lighting_light_position_location = glGetUniformLocation(lighting_shader, "light.position");
-
-	unsigned int light_object_light_color_location = glGetUniformLocation(light_object_shader, "light_color");
-//	*/
-
-	/* DEMO SCENE END */
 
 	//
 	// --- ImGui ---
@@ -561,106 +401,12 @@ int main()
 	ImGui_ImplOpenGL3_Init(glsl_version);
 	ImGui::SetCurrentContext(imgui_context);
 
-//	/*
-	// glm::vec4 clear_color = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f);
-	glm::vec4 clear_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-
-	// Setup scene.
-	// camera.position = glm::vec3(1.2f, -0.7f, 1.0f);
-	camera.position = glm::vec3(0.0f, 0.0f, 3.0f);
-	// camera.pitch = 32.0f;
-	camera.pitch = 0.0f;
-	// camera.yaw = -115.0f;
-	camera.yaw = 0.0f;
-
-	// @CopyPaste from `mouse_callback()`.
-	// Update camera front vector.
-	{
-		glm::vec3 direction;
-		direction.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-		direction.y = sin(glm::radians(camera.pitch));
-		direction.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-
-		camera.front = glm::normalize(direction);
-		// @TODO: Up vector should be updated too!!!
-		// It seems "right" for now because in case of going up
-		// we want to go up in world up vector, no the camera one.
-		// The camera up vector always stays the same as world's,
-		// resulting in "right" solution (which is totally wrong!).
-		// camera.up =
-	}
-//	*/
-
 	while (!glfwWindowShouldClose(window))
 	{
 		process_input(window);
 
-		projection = glm::perspective(glm::radians(camera.fov), screen.aspect_ratio, NEAR_CLIP_PLANE_DISTANCE, FAR_CLIP_PLANE_DISTANCE);
-		view = glm::lookAt(camera.position, camera.position + camera.front, camera.up);
-
-		projection = glm::perspective(radians(fpv_camera.fov), fpv_camera.aspect_ratio, fpv_camera.near_clip_plane_distance, fpv_camera.far_clip_plane_distance);
-		float glm_proj[4][4] = {
-			{ projection[0][0], projection[1][0], projection[2][0], projection[3][0] },
-			{ projection[0][1], projection[1][1], projection[2][1], projection[3][1] },
-			{ projection[0][2], projection[1][2], projection[2][2], projection[3][2] },
-			{ projection[0][3], projection[1][3], projection[2][3], projection[3][3] },
-		};
 		fpv_camera.projection_matrix = projection_perspective( radians( fpv_camera.fov ), fpv_camera.aspect_ratio, fpv_camera.near_clip_plane_distance, fpv_camera.far_clip_plane_distance );
-		auto my_projection = fpv_camera.projection_matrix;
-		float my_proj[4][4] = {
-			{ my_projection[0][0], my_projection[1][0], my_projection[2][0], my_projection[3][0] },
-			{ my_projection[0][1], my_projection[1][1], my_projection[2][1], my_projection[3][1] },
-			{ my_projection[0][2], my_projection[1][2], my_projection[2][2], my_projection[3][2] },
-			{ my_projection[0][3], my_projection[1][3], my_projection[2][3], my_projection[3][3] },
-		};
 		fpv_camera.view_matrix = projection_view( fpv_camera.position, fpv_camera.position + fpv_camera.direction_front, fpv_camera.direction_up );
-
-		/* DEMO SCENE RENDER */
-		// --- Lighting ---
-		// Cube
-//		/*
-		glBindFramebuffer( GL_FRAMEBUFFER, 0 );
-		glUseProgram(lighting_shader);
-
-		if (!freeze_light_change) {
-			light_color.r = abs(sin(frame_time.current * 2.0f));
-			light_color.g = abs(sin(frame_time.current * 0.7f));
-			light_color.b = abs(sin(frame_time.current * 1.3f));
-		}
-
-		// cube_ambient = light_color * cube_ambient_strength;
-		cube_diffuse = light_color * cube_diffuse_strength;
-		cube_specular = light_color * cube_specular_strength;
-
-		glUniform3fv(lighting_material_ambient_location, 1, &cube_ambient[0]);
-		glUniform3fv(lighting_material_diffuse_location, 1, &cube_diffuse[0]);
-		glUniform3fv(lighting_material_specular_location, 1, &cube_specular[0]);
-		glUniform1f(lighting_material_shininess_location, cube_shininess);
-
-		glUniform3fv(lighting_light_ambient_location, 1, &cube_ambient_strength[0]);
-		glUniform3fv(lighting_light_diffuse_location, 1, &cube_diffuse_strength[0]);
-		glUniform3fv(lighting_light_specular_location, 1, &cube_specular_strength[0]);
-
-		glUniform3fv(lighting_view_position_location, 1, &camera.position[0]);
-		glUniform3fv(lighting_light_position_location, 1, &emissive_object_position[0]);
-
-		glUniformMatrix4fv(lighting_projection_location, 1, GL_FALSE, &projection[0][0]);
-		glUniformMatrix4fv(lighting_view_location, 1, GL_FALSE, &view[0][0]);
-		glUniformMatrix4fv(lighting_model_location, 1, GL_FALSE, &reflective_object_model[0][0]);
-
-		glBindVertexArray(object_vertex_array_object);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-
-		glUseProgram(light_object_shader);
-		glUniform3fv(light_object_light_color_location, 1, &light_color[0]);
-		glUniformMatrix4fv(light_object_projection_location, 1, GL_FALSE, &projection[0][0]);
-		glUniformMatrix4fv(light_object_view_location, 1, GL_FALSE, &view[0][0]);
-		glUniformMatrix4fv(light_object_model_location, 1, GL_FALSE, &emissive_object_model[0][0]);
-
-		glBindVertexArray(light_object_vertex_array_object);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-//		*/
-		/* DEMO SCENE RENDER */
 
 		renderer_queue_draw_command(
 			/*     mesh_id */ cube_mesh_id,
@@ -689,16 +435,17 @@ int main()
 			if (ImGui::Begin("Scene")) {
 				ImGui::Checkbox("Show demo window", &imgui_draw_demo_window);
 
-//				/*
+
 				ImGui::TextUnformatted("CAMERA:");
 
-				ImGui::InputFloat3("Position", &camera.position[0]);
-				ImGui::DragFloat("Field of view", &camera.fov, 1.0f, 1.0f, 179.0f);
-				ImGui::DragFloat("Pitch", &camera.pitch);
-				ImGui::DragFloat("Yaw", &camera.yaw);
-				ImGui::ColorEdit3("Clear color", &clear_color[0]);
+				ImGui::InputFloat3("Position", &fpv_camera.position.x);
+				ImGui::DragFloat("Field of view", &fpv_camera.fov, 1.0f, 1.0f, 179.0f);
+				// ImGui::DragFloat("Pitch", &camera.pitch);
+				// ImGui::DragFloat("Yaw", &camera.yaw);
+				// ImGui::ColorEdit3("Clear color", &);
 				ImGui::Checkbox("Freeze", &freeze_camera);
 
+				/*
 				ImGui::Separator();
 				ImGui::TextUnformatted("POINT LIGHT (LIGHT CUBE):");
 
@@ -716,7 +463,7 @@ int main()
 				ImGui::ColorEdit3("Specular strength", &cube_specular_strength[0]);
 				ImGui::InputFloat("Shininess", &cube_shininess);
 
-//				*/
+				*/
 				ImGui::Separator();
 				ImGui::TextUnformatted("RENDERER:");
 
