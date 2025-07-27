@@ -166,3 +166,119 @@ u8 texture_format_channels( Texture_Format format ) {
 		default:                          return 0;
 	}
 }
+
+StringView_ASCII texture_format_name( Texture_Format format ) {
+	switch ( format ) {
+		case TextureFormat_Red: return "Red";
+		case TextureFormat_RG: return "RG";
+		case TextureFormat_RGB: return "RGB";
+		case TextureFormat_RGBA: return "RGBA";
+
+		case TextureFormat_BGR: return "BGR";
+		case TextureFormat_BGRA: return "BGRA";
+
+		case TextureFormat_Depth: return "Depth";
+		case TextureFormat_Stencil: return "Stencil";
+		case TextureFormat_DepthStencil: return "DepthStencil";
+
+		case TextureFormat_Unknown:
+		default: return "Unknown";
+	}
+}
+
+// TODO: Move out of Texture module
+StringView_ASCII
+opengl_internal_texture_format_name( GLint internal_format ) {
+	switch ( internal_format ) {
+		// Base Internal Formats
+		case GL_DEPTH_COMPONENT: return "GL_DEPTH_COMPONENT";
+		case GL_DEPTH_STENCIL: return "GL_DEPTH_STENCIL";
+		case GL_RED: return "GL_RED";
+		case GL_RG: return "GL_RG";
+		case GL_RGB: return "GL_RGB";
+		case GL_RGBA: return "GL_RGBA";
+
+		// Sized Internal Formats
+		case GL_R8: return "GL_R9";
+		case GL_R8_SNORM: return "GL_R8_SNORM";
+		case GL_R16: return "GL_R16";
+		case GL_R16_SNORM: return "GL_R16_SNORM";
+		case GL_RG8: return "GL_RG9";
+		case GL_RG8_SNORM: return "GL_RG8_SNORM";
+		case GL_RG16: return "GL_RG16";
+		case GL_RG16_SNORM: return "GL_RG16_SNORM";
+		case GL_R3_G3_B2: return "GL_R3_G3_B2";
+		case GL_RGB4: return "GL_RGB4";
+		case GL_RGB5: return "GL_RGB5";
+		case GL_RGB8: return "GL_RGB8";
+		case GL_RGB8_SNORM: return "GL_RGB8_SNORM";
+		case GL_RGB10: return "GL_RGB10";
+		case GL_RGB12: return "GL_RGB12";
+		case GL_RGB16_SNORM: return "GL_RGB16_SNORM";
+		case GL_RGBA2: return "GL_RGBA2";
+		case GL_RGBA4: return "GL_RGBA4";
+		case GL_RGB5_A1: return "GL_RGB5_A1";
+		case GL_RGBA8: return "GL_RGBA8";
+		case GL_RGBA8_SNORM: return "GL_RGBA8_SNORM";
+		case GL_RGB10_A2: return "GL_RGB10_A2";
+		case GL_RGB10_A2UI: return "GL_RGB10_A2UI";
+		case GL_RGBA12: return "GL_RGBA12";
+		case GL_RGBA16: return "GL_RGBA16";
+		case GL_SRGB8: return "GL_SRGB8";
+		case GL_SRGB8_ALPHA8: return "GL_SRGB8_ALPHA8";
+		case GL_R16F: return "GL_R16F";
+		case GL_RG16F: return "GL_RG16F";
+		case GL_RGB16F: return "GL_RGB16F";
+		case GL_RGBA16F: return "GL_RGBA16F";
+		case GL_R32F: return "GL_R32F";
+		case GL_RG32F: return "GL_RG32F";
+		case GL_RGB32F: return "GL_RGB32F";
+		case GL_RGBA32F: return "GL_RGBA32F";
+		case GL_R11F_G11F_B10F: return "GL_R11F_G11F_B10F";
+		case GL_RGB9_E5: return "GL_RGB9_E5";
+		case GL_R8I: return "GL_R8I";
+		case GL_R8UI: return "GL_R8UI";
+		case GL_R16I: return "GL_R16I";
+		case GL_R16UI: return "GL_R16UI";
+		case GL_R32I: return "GL_R32I";
+		case GL_R32UI: return "GL_R32UI";
+		case GL_RG8I: return "GL_RG8I";
+		case GL_RG8UI: return "GL_RG8UI";
+		case GL_RG16I: return "GL_RG16I";
+		case GL_RG16UI: return "GL_RG16UI";
+		case GL_RG32I: return "GL_RG32I";
+		case GL_RG32UI: return "GL_RG32UI";
+		case GL_RGB8I: return "GL_RGB8I";
+		case GL_RGB8UI: return "GL_RGB8UI";
+		case GL_RGB16I: return "GL_RGB16I";
+		case GL_RGB16UI: return "GL_RGB16UI";
+		case GL_RGB32I: return "GL_RGB32I";
+		case GL_RGB32UI: return "GL_RGB32UI";
+		case GL_RGBA8I: return "GL_RGBA8I";
+		case GL_RGBA8UI: return "GL_RGBA8UI";
+		case GL_RGBA16I: return "GL_RGBA16I";
+		case GL_RGBA16UI: return "GL_RGBA16UI";
+		case GL_RGBA32I: return "GL_RGBA32I";
+		case GL_RGBA32UI: return "GL_RGBA32UI";
+
+		// Compressed Internal Formats
+		case GL_COMPRESSED_RED: return "GL_COMPRESSED_RED";
+		case GL_COMPRESSED_RG: return "GL_COMPRESSED_RG";
+		case GL_COMPRESSED_RGB: return "GL_COMPRESSED_RGB";
+		case GL_COMPRESSED_RGBA: return "GL_COMPRESSED_RGBA";
+		case GL_COMPRESSED_SRGB: return "GL_COMPRESSED_SRGB";
+		case GL_COMPRESSED_SRGB_ALPHA: return "GL_COMPRESSED_SRGB_ALPHA";
+		case GL_COMPRESSED_RED_RGTC1: return "GL_COMPRESSED_RED_RGTC1";
+		case GL_COMPRESSED_SIGNED_RED_RGTC1: return "GL_COMPRESSED_SIGNED_RED_RGTC1";
+		case GL_COMPRESSED_RG_RGTC2: return "GL_COMPRESSED_RG_RGTC2";
+		case GL_COMPRESSED_SIGNED_RG_RGTC2: return "GL_COMPRESSED_SIGNED_RG_RGTC2";
+		case GL_COMPRESSED_RGBA_BPTC_UNORM: return "GL_COMPRESSED_RGBA_BPTC_UNORM";
+		case GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM: return "GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM";
+		case GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT: return "GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT";
+		case GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT: return "GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT";
+
+		case GL_DEPTH24_STENCIL8: return "GL_DEPTH24_STENCIL8";
+
+		default: return "(unknown)";
+	}
+}

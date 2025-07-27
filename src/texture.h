@@ -63,5 +63,7 @@ Texture * texture_instance( Texture_ID texture_id );
 // @TODO: Decouple from OpenGL
 // static GLenum _texture_format_to_opengl( Texture_Format format );
 u8 texture_format_channels( Texture_Format format );
+StringView_ASCII texture_format_name( Texture_Format format );
+StringView_ASCII opengl_internal_texture_format_name( GLint internal_format );
 
 #endif /* QLIGHT_TEXTURE_H */
