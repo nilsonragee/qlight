@@ -141,12 +141,12 @@ opengl_generate_and_bind_vertex_array( GLuint *id, StringView_ASCII debug_name )
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_VERTEX_ARRAY, *id, debug_name.size, debug_name.data );
-#endif
 	log(
 		LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Generated and bound VAO '" StringViewFormat "' (#%u).",
 		StringViewArgument( debug_name ),
 		*id
 	);
+#endif
 }
 
 static void
@@ -156,12 +156,12 @@ opengl_generate_and_bind_vertex_buffer( GLuint *id, StringView_ASCII debug_name 
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_BUFFER, *id, debug_name.size, debug_name.data );
-#endif
 	log(
 		LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Generated and bound VBO '" StringViewFormat "' (#%u).",
 		StringViewArgument( debug_name ),
 		*id
 	);
+#endif
 }
 
 static void
@@ -171,12 +171,12 @@ opengl_generate_and_bind_element_buffer( GLuint *id, StringView_ASCII debug_name
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_BUFFER, *id, debug_name.size, debug_name.data );
-#endif
 	log(
 		LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Generated and bound EBO '" StringViewFormat "' (#%u).",
 		StringViewArgument( debug_name ),
 		*id
 	);
+#endif
 }
 
 static void
@@ -569,6 +569,8 @@ opengl_debug_message_callback(
 		case GL_DEBUG_SEVERITY_NOTIFICATION:
 		default:                              log_level = LogLevel_Debug; break;
 	}
+	// The function itself is called only with the OpenGL debug output set up,
+	// no need to wrap with `QLIGHT_DEBUG`.
 	log(
 		log_level,
 		"Renderer/GL",
@@ -729,10 +731,12 @@ static GLuint
 opengl_compile_shader_stage( Renderer_Shader_Stage *stage ) {
 	GLuint shader_type = renderer_shader_kind_to_opengl( stage->kind );
 	StringView_ASCII shader_kind = renderer_shader_kind_name( stage->kind );
+#ifdef QLIGHT_DEBUG
 	log( LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Compiling '" StringViewFormat "' " StringViewFormat " stage shader...",
 		StringViewArgument( stage->name ),
 		StringViewArgument( shader_kind )
 	);
+#endif
 
 	GLuint shader_id = glCreateShader( shader_type );
 	const char *sources[] = { stage->source_code.data };
@@ -756,9 +760,11 @@ opengl_compile_shader_stage( Renderer_Shader_Stage *stage ) {
 		glDeleteShader( shader_id );
 	}
 
+#ifdef QLIGHT_DEBUG
 	log( LogLevel_Debug, QL_LOG_CHANNEL "/GL", "'" StringViewFormat "' compiled successfully.",
 		StringViewArgument( stage->name )
 	);
+#endif
 	return shader_id;
 }
 
@@ -1673,12 +1679,12 @@ opengl_create_and_bind_texture_2d( GLuint *id, StringView_ASCII debug_name ) {
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_TEXTURE, *id, debug_name.size, debug_name.data );
-#endif
 	log(
 		LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Created and bound 2D Texture '" StringViewFormat "' (#%u).",
 		StringViewArgument( debug_name ),
 		*id
 	);
+#endif
 }
 
 bool
