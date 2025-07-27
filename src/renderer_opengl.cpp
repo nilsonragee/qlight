@@ -1772,3 +1772,32 @@ void
 renderer_set_ambient_light_color( Vector3_f32 ambient_light ) {
 	g_renderer.ambient_light = ambient_light;
 }
+
+StringView_ASCII
+renderer_framebuffer_attachment_name( Renderer_Framebuffer_Attachment attachment ) {
+	switch ( attachment ) {
+		case RendererFramebufferAttachment_Color0: return "Color0";
+		case RendererFramebufferAttachment_Color1: return "Color1";
+		case RendererFramebufferAttachment_Color2: return "Color2";
+		case RendererFramebufferAttachment_Color3: return "Color3";
+		case RendererFramebufferAttachment_Color4: return "Color4";
+		case RendererFramebufferAttachment_Color5: return "Color5";
+		case RendererFramebufferAttachment_Color6: return "Color6";
+		case RendererFramebufferAttachment_Color7: return "Color7";
+		case RendererFramebufferAttachment_Color8: return "Color8";
+		case RendererFramebufferAttachment_Color9: return "Color9";
+		case RendererFramebufferAttachment_Color10: return "Color10";
+		case RendererFramebufferAttachment_Color11: return "Color11";
+		case RendererFramebufferAttachment_Color12: return "Color12";
+		case RendererFramebufferAttachment_Color13: return "Color13";
+		case RendererFramebufferAttachment_Color14: return "Color14";
+		case RendererFramebufferAttachment_Color15: return "Color15";
+
+		case RendererFramebufferAttachment_Depth: return "Depth";
+		case RendererFramebufferAttachment_Stencil: return "Stencil";
+		case RendererFramebufferAttachment_DepthStencil: return "DepthStencil";
+
+		case RendererFramebufferAttachment_None:
+		default:                                  return ( const char *)NULL;
+	}
+}

@@ -360,4 +360,7 @@ renderer_set_camera_position_pointer( Vector3_f32 *camera_position );
 void
 renderer_set_ambient_light_color( Vector3_f32 ambient_light );
 
+StringView_ASCII
+renderer_framebuffer_attachment_name( Renderer_Framebuffer_Attachment attachment );
+
 #endif /* QLIGHT_RENDERER_H */
