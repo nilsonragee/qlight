@@ -1,6 +1,9 @@
 #include "material.h"
 #include "renderer.h"
 
+#define QL_LOG_CHANNEL "Material"
+#include "log.h"
+
 constexpr u64 MATERIALS_INITIAL_CAPACITY = 64;
 
 struct {
@@ -55,6 +58,16 @@ Material_ID material_create(
 
 	Material_ID material_id = array_add( &g_materials.materials, material );
 	g_materials.created += 1;
+	log_debug(
+		"Created '" StringViewFormat "' (#%u, '" StringViewFormat "', diffuse: #%u, normal: #%u, specular: #%u, shininess: %.f).",
+		StringViewArgument( material.name ),
+		material_id,
+		StringViewArgument( material.shader_program->name ),
+		material.diffuse,
+		material.normal_map,
+		material.specular_map,
+		material.shininess_exponent
+	);
 	return material_id;
 }
 

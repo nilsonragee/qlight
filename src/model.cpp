@@ -1,9 +1,12 @@
-#include "model.h"
-#include "renderer.h"
-
 #include <assimp/cimport.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+
+#include "model.h"
+#include "renderer.h"
+
+#define QL_LOG_CHANNEL "Model"
+#include "log.h"
 
 struct {
 	Array< Model > models;
@@ -77,6 +80,10 @@ add_appropriately_sized_mesh_indices( CArray *destination, CArrayView source ) {
 }
 
 Model_ID model_load_from_file( StringView_ASCII name, StringView_ASCII file_path ) {
+	log_debug( "Loading '" StringViewFormat "' from '" StringViewFormat "'...",
+		StringViewArgument( name ),
+		StringViewArgument( file_path )
+	);
 	const aiScene *scene = aiImportFile( file_path.data, 0 );
 	Assert( scene );
 
@@ -185,6 +192,12 @@ Model_ID model_load_from_file( StringView_ASCII name, StringView_ASCII file_path
 	u32 model_idx = array_add( &g_models.models, model );
 
 	aiReleaseImport( scene );
+	log_info( "Loaded Model '" StringViewFormat "' (#%u, %u vertices, %u indices).",
+		StringViewArgument( name ),
+		model_idx,
+		mesh.vertices.size,
+		mesh.indices.size
+	);
 	return model_idx;
 }
 

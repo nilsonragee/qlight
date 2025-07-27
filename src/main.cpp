@@ -9,6 +9,10 @@
 #include "map.h"
 #include "math.h"
 #include "renderer.h"
+#include "console.h"
+
+#define QL_LOG_CHANNEL "App"
+#include "log.h"
 
 //
 // --- Global variables ---
@@ -31,7 +35,10 @@ void framebuffer_size_callback(GLFWwindow* window, int new_screen_width, int new
 	screen.height = new_screen_height;
 	screen.aspect_ratio = (float)new_screen_width / (float)new_screen_height;
 	glViewport(0, 0, new_screen_width, new_screen_height);
-	printf("[%f] - New window size: %dx%d\n", frame_time.current, screen.width, screen.height);
+	log_info( "New window size: %dx%d.",
+		screen.width,
+		screen.height
+	);
 }
 
 void mouse_callback(GLFWwindow* window, double new_mouse_x, double new_mouse_y) {
@@ -65,7 +72,9 @@ void mouse_callback(GLFWwindow* window, double new_mouse_x, double new_mouse_y) 
 void scroll_callback(GLFWwindow* window, double offset_x, double offset_y) {
 	if (!freeze_camera) {
 		camera.fov -= (float) offset_y;
-		printf("[%f] - Camera FOV: %f\n", frame_time.current, camera.fov);
+		log_info( "Camera FOV: %.f.",
+			camera.fov
+		);
 	}
 }
 
@@ -114,7 +123,10 @@ void process_input(GLFWwindow* window) {
 void single_press_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	if (key == GLFW_KEY_GRAVE_ACCENT && action == GLFW_PRESS) {
 		imgui_draw_edit_window = !imgui_draw_edit_window;
-		printf("[%f] - 'Edit' window mode: %s\n", frame_time.current, (imgui_draw_edit_window) ? "SHOW" : "HIDE");
+		StringView_ASCII mode_name = ( imgui_draw_edit_window ) ? "SHOW" : "HIDE";
+		log_info( "'Edit' window mode: " StringViewFormat ".",
+			StringViewArgument( mode_name )
+		);
 	}
 
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
@@ -126,12 +138,18 @@ void single_press_key_callback(GLFWwindow* window, int key, int scancode, int ac
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		}
 
-		printf("[%f] - Cursor mode: %s\n", frame_time.current, (mouse.cursor_mode) ? "ON" : "OFF");
+		StringView_ASCII mode_name = ( mouse.cursor_mode ) ? "ON" : "OFF";
+		log_info( "Cursor mode: " StringViewFormat ".",
+			StringViewArgument( mode_name )
+		);
 	}
 }
 
 void glfw_error_callback(int error_code, const char* description) {
-	printf("GLFW ERROR: %s (Error code: %d)\n", description, error_code);
+	log( LogLevel_Error, "GLFW", "" StringViewFormat " (Error code: %d).",
+		StringViewArgument( string_view( description ) ),
+		error_code
+	);
 }
 
 static void
@@ -266,16 +284,19 @@ void create_materials() {
 
 int main()
 {
+	console_init( CP_UTF8 );
+	log_init();
+
 	GLFWwindow* window;
 
 	glfwSetErrorCallback(glfw_error_callback);
 
-	if (glfwInit()) {
-		printf("GLFW initialized.\n");
+	if ( glfwInit() ) {
+		log_info( "GLFW initialized." );
 	} else {
-		printf("ERROR: Failed to initialize GLFW!\n");
-		ASSERT(false);
-		exit(EXIT_FAILURE);
+		log_error( "Failed to initialize GLFW!" );
+		Assert( false );
+		exit( EXIT_FAILURE );
 	}
 
 	// OpenGL 4.6, Core profile.
@@ -291,15 +312,28 @@ int main()
 	// ... "name", glfwGetPrimaryMonitor(), NULL);
 	GLFWmonitor* monitor = NULL;
 	window = glfwCreateWindow(screen.width, screen.height, "OpenGL", monitor, NULL);
-	if (window) {
-		printf("GLFW Window created. (%dx%d, %s)\n", screen.width, screen.height, (monitor) ? "Fullscreen" : "Windowed");
+	if ( window ) {
+		StringView_ASCII mode_name = ( monitor ) ? "Fullscreen" : "Windowed";
+		log_info( "GLFW Window created (%dx%d, " StringViewFormat ").",
+			screen.width,
+			screen.height,
+			StringViewArgument( mode_name )
+		);
 	} else {
-		printf("ERROR: Failed to open GLFW window!\n");
-		ASSERT(false);
-		exit(EXIT_FAILURE);
+		log_error( "Failed to open GLFW window!" );
+		Assert( false );
+		exit( EXIT_FAILURE );
 	}
 
 	glfwMakeContextCurrent(window);
+
+	if ( glewInit() == GLEW_OK ) {
+		log_info( "GLEW initialized." );
+	} else {
+		log_error( "Failed to initialize GLEW!");
+		Assert( false );
+		exit( EXIT_FAILURE );
+	}
 
 	// In the 2nd argument we are telling GLFW
 	// the function, that will execute whenever
@@ -321,14 +355,6 @@ int main()
 	// 2 - 1/2 of a monitor refresh rate (60Hz = 30fps)
 	// 3 - 1/3...
 	glfwSwapInterval(1);
-
-	if (glewInit() == GLEW_OK) {
-		printf("GLEW initialized.\n");
-	} else {
-		printf("ERROR: Failed to initialize GLEW!\n");
-		ASSERT(false);
-		exit(EXIT_FAILURE);
-	}
 
 	textures_init();
 	materials_init();
@@ -367,8 +393,8 @@ int main()
 	renderer_set_view_matrix_pointer( &fpv_camera.view_matrix );
 	renderer_set_projection_matrix_pointer( &fpv_camera.projection_matrix );
 
-	printf(
-		"GPU Vendor: " StringViewFormat ", GPU Renderer: " StringViewFormat "\n",
+	log_info(
+		"GPU Vendor: " StringViewFormat ", GPU Name: " StringViewFormat,
 		StringViewArgument( renderer_device_vendor() ),
 		StringViewArgument( renderer_device_name() )
 	);
@@ -383,9 +409,9 @@ int main()
 	IMGUI_CHECKVERSION();
 	auto imgui_context = ImGui::CreateContext();
 	if (imgui_context) {
-		printf("ImGui context created.\n");
+		log_info( "ImGui context created." );
 	} else {
-		printf("Failed to create ImGui context!\n");
+		log_error( "Failed to create ImGui context!" );
 	}
 	ImGuiIO &imgui_io = ImGui::GetIO();
 

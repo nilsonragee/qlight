@@ -2,6 +2,9 @@
 #include "renderer.h"
 #include "texture.h"
 
+#define QL_LOG_CHANNEL "Renderer"
+#include "log.h"
+
 constexpr u64 RENDERER_INITIAL_PROGRAMS_CAPACITY = 4;
 constexpr u64 RENDERER_INITIAL_STAGES_CAPACITY = 8;
 constexpr u64 RENDERER_INITIAL_FRAMEBUFFERS_CAPACITY = 2;
@@ -139,6 +142,11 @@ opengl_generate_and_bind_vertex_array( GLuint *id, StringView_ASCII debug_name )
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_VERTEX_ARRAY, *id, debug_name.size, debug_name.data );
 #endif
+	log(
+		LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Generated and bound VAO '" StringViewFormat "' (#%u).",
+		StringViewArgument( debug_name ),
+		*id
+	);
 }
 
 static void
@@ -149,6 +157,11 @@ opengl_generate_and_bind_vertex_buffer( GLuint *id, StringView_ASCII debug_name 
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_BUFFER, *id, debug_name.size, debug_name.data );
 #endif
+	log(
+		LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Generated and bound VBO '" StringViewFormat "' (#%u).",
+		StringViewArgument( debug_name ),
+		*id
+	);
 }
 
 static void
@@ -159,10 +172,16 @@ opengl_generate_and_bind_element_buffer( GLuint *id, StringView_ASCII debug_name
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_BUFFER, *id, debug_name.size, debug_name.data );
 #endif
+	log(
+		LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Generated and bound EBO '" StringViewFormat "' (#%u).",
+		StringViewArgument( debug_name ),
+		*id
+	);
 }
 
 static void
 create_default_textures() {
+	log_debug( "Creating default textures..." );
 	Texture_ID white_texture_id = texture_create(
 		/*                   name */ "White Texture",
 		/*                  width */ 1,
@@ -213,10 +232,12 @@ create_default_textures() {
 	purple_texture->bytes.size = ARRAY_SIZE( purple_checkers_bytes );
 	renderer_texture_upload( purple_texture_id );
 	g_renderer.texture_purple_checkers = purple_texture_id;
+	log_debug( "Default textures have been created." );
 }
 
 static void
 setup_fullscreen_quad() {
+	log_debug( "Setting up Fullscreen Quad..." );
 	Array< Renderer_Vertex_Attribute > attributes = array_new< Renderer_Vertex_Attribute >( sys_allocator, 1 );
 
 	array_add( &attributes, Renderer_Vertex_Attribute {
@@ -270,6 +291,7 @@ setup_fullscreen_quad() {
 	Mesh_ID mesh_id = mesh_store( &quad_mesh );
 	renderer_mesh_upload( mesh_id );
 	g_renderer.fullscreen_quad = mesh_id;
+	log_debug( "Fullscreen Quad has been set up." );
 }
 
 static void
@@ -388,6 +410,7 @@ load_geometry_buffer_shader( StringView_ASCII vertex_stage_filepath, StringView_
 // TODO: recreate_geometry_buffer; resize existing attachment textures
 static void
 setup_geometry_buffer( u16 framebuffer_width, u16 framebuffer_height ) {
+	log_debug( "Setting up Geometry Buffer..." );
 	g_renderer.gbuffer.framebuffer = renderer_create_framebuffer( "gbuffer_framebuffer" );
 
 	g_renderer.gbuffer.shader_program = load_geometry_buffer_shader(
@@ -463,6 +486,7 @@ setup_geometry_buffer( u16 framebuffer_width, u16 framebuffer_height ) {
 		g_renderer.gbuffer.framebuffer,
 		g_renderer.gbuffer.renderbuffer_depth_stencil
 	);
+	log_debug( "Geometry Buffer has been set up." );
 }
 
 static void
@@ -510,8 +534,8 @@ opengl_debug_message_type_name( GLenum type ) {
 }
 
 static StringView_ASCII
-opengl_debug_message_severity_name( GLenum source ) {
-	switch ( source ) {
+opengl_debug_message_severity_name( GLenum severity ) {
+	switch ( severity ) {
 		case GL_DEBUG_SEVERITY_HIGH:          return "High";
 		case GL_DEBUG_SEVERITY_MEDIUM:        return "Medium";
 		case GL_DEBUG_SEVERITY_LOW:           return "Low";
@@ -535,7 +559,20 @@ opengl_debug_message_callback(
 	StringView_ASCII source_name = opengl_debug_message_source_name( source );
 	StringView_ASCII type_name = opengl_debug_message_type_name( type );
 	StringView_ASCII severity_name = opengl_debug_message_severity_name( severity );
-	printf( "OpenGL DEBUG: " StringViewFormat "::" StringViewFormat " (#%d, " StringViewFormat "): " StringViewFormat "\n",
+	Log_Level log_level;
+	switch ( severity ) {
+		case GL_DEBUG_SEVERITY_HIGH:          log_level = LogLevel_Error; break;
+
+		case GL_DEBUG_SEVERITY_MEDIUM:
+		case GL_DEBUG_SEVERITY_LOW:           log_level = LogLevel_Warning; break;
+
+		case GL_DEBUG_SEVERITY_NOTIFICATION:
+		default:                              log_level = LogLevel_Debug; break;
+	}
+	log(
+		log_level,
+		"Renderer/GL",
+		StringViewFormat "::" StringViewFormat " (#%d, " StringViewFormat "): " StringViewFormat,
 		StringViewArgument( source_name ),
 		StringViewArgument( type_name ),
 		id,
@@ -546,6 +583,7 @@ opengl_debug_message_callback(
 
 bool
 renderer_init() {
+	log_debug( "Initializing Renderer..." );
 	if ( g_renderer.programs.data )
 		return false;
 
@@ -553,14 +591,17 @@ renderer_init() {
 #if 1
 	glEnable( GL_DEBUG_OUTPUT );
 	glEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
-	/*
+	GLuint disabled_messages[] {
+		/* Buffer detailed info */ 131185
+	};
 	glDebugMessageControl(
-	    GL_DONT_CARE,              // source
-	    GL_DONT_CARE,              // type
-	    GL_DONT_CARE,              // severity
-	    0, NULL, GL_FALSE          // Disable these messages
+	    /*   source */ GL_DEBUG_SOURCE_API,
+	    /*     type */ GL_DEBUG_TYPE_OTHER,
+	    /* severity */ GL_DONT_CARE,
+	    /*    count */ ARRAY_SIZE( disabled_messages ),
+	    /*      ids */ disabled_messages,
+	    /*  enabled */ GL_FALSE
 	);
-	*/
 	glDebugMessageCallback( opengl_debug_message_callback, NULL );
 #endif
 
@@ -601,6 +642,7 @@ renderer_init() {
 
 	create_default_textures();
 
+	log_debug( "Renderer has been initialized." );
 	return true;
 }
 
@@ -686,6 +728,12 @@ renderer_shader_kind_name( Renderer_Shader_Kind kind ) {
 static GLuint
 opengl_compile_shader_stage( Renderer_Shader_Stage *stage ) {
 	GLuint shader_type = renderer_shader_kind_to_opengl( stage->kind );
+	StringView_ASCII shader_kind = renderer_shader_kind_name( stage->kind );
+	log( LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Compiling '" StringViewFormat "' " StringViewFormat " stage shader...",
+		StringViewArgument( stage->name ),
+		StringViewArgument( shader_kind )
+	);
+
 	GLuint shader_id = glCreateShader( shader_type );
 	const char *sources[] = { stage->source_code.data };
 	const s32 lengths[] = { stage->source_code.size };
@@ -698,7 +746,6 @@ opengl_compile_shader_stage( Renderer_Shader_Stage *stage ) {
 		StringView_ASCII info_log = opengl_get_info_log( OpenGL_Shader, shader_id );
 
 		// @OTODO: Use Console API.
-		StringView_ASCII shader_kind = renderer_shader_kind_name( stage->kind );
 		printf(
 			"ERROR: Failed to compile \"" StringViewFormat "\" " StringViewFormat " stage shader!\n",
 			StringViewArgument( stage->name ),
@@ -709,6 +756,9 @@ opengl_compile_shader_stage( Renderer_Shader_Stage *stage ) {
 		glDeleteShader( shader_id );
 	}
 
+	log( LogLevel_Debug, QL_LOG_CHANNEL "/GL", "'" StringViewFormat "' compiled successfully.",
+		StringViewArgument( stage->name )
+	);
 	return shader_id;
 }
 
@@ -771,6 +821,9 @@ renderer_shader_kind_bit( Renderer_Shader_Kind kind ) {
 
 Renderer_Shader_Program *
 renderer_create_and_compile_shader_program( StringView_ASCII name, ArrayView< Renderer_Shader_Stage * > shader_stages ) {
+	log_debug( "Creating and compiling '" StringViewFormat "' shader program...",
+		StringViewArgument( name )
+	);
 	Renderer_Shader_Program program = {
 		.name = name,
 		.vertex_attributes = array_new< Renderer_Vertex_Attribute >( sys_allocator, SHADER_PROGRAM_VERTEX_ATTRIBUTES_INITIAL_CAPACITY ),
@@ -857,6 +910,9 @@ renderer_create_and_compile_shader_program( StringView_ASCII name, ArrayView< Re
 
 	u32 program_idx = array_add( &g_renderer.programs, program );
 	Renderer_Shader_Program * program_ptr = &g_renderer.programs.data[ program_idx ];
+	log_debug( "Created and compiled '" StringViewFormat "' shader program.",
+		StringViewArgument( name )
+	);
 	return program_ptr;
 }
 
@@ -904,6 +960,10 @@ renderer_shader_program_update_uniform_locations( Renderer_Shader_Program *progr
 		updated += 1;
 	}
 
+	log_debug( "Updated %u uniform locations of '" StringViewFormat "' shader program.",
+		updated,
+		StringViewArgument( program->name )
+	);
 	return updated;
 }
 
@@ -1007,6 +1067,16 @@ renderer_create_renderbuffer(
 	);
 
 	u32 renderbuffer_idx = array_add( &g_renderer.renderbuffers, renderbuffer );
+	StringView_ASCII attachment_name = renderer_framebuffer_attachment_name( renderbuffer.attachment );
+	StringView_ASCII format_name = opengl_internal_texture_format_name( opengl_internal_format );
+	log_info( "Created Renderbuffer '" StringViewFormat "' (#%u, %ux%u, " StringViewFormat ", " StringViewFormat ").",
+		StringViewArgument( renderbuffer.name ),
+		renderbuffer_idx,
+		width,
+		height,
+		StringViewArgument( attachment_name ),
+		StringViewArgument( format_name )
+	);
 	return renderbuffer_idx;
 }
 
@@ -1043,6 +1113,10 @@ renderer_create_framebuffer( StringView_ASCII name ) {
 #endif
 
 	u32 framebuffer_idx = array_add( &g_renderer.framebuffers, framebuffer );
+	log_info( "Created Framebuffer '" StringViewFormat "' (#%u).",
+		StringViewArgument( framebuffer.name ),
+		framebuffer_idx
+	);
 	return framebuffer_idx;
 }
 
@@ -1083,6 +1157,15 @@ renderer_attach_renderbuffer_to_framebuffer( Renderer_Framebuffer_ID framebuffer
 		/*       renderbuffer */ renderbuffer->opengl_renderbuffer
 	);
 
+	StringView_ASCII attachment_name = renderer_framebuffer_attachment_name( renderbuffer->attachment );
+	log_debug(
+		"Attached Renderbuffer '" StringViewFormat "' (#%u) to Framebuffer '" StringViewFormat "' (#%u) at " StringViewFormat ".",
+		StringViewArgument( renderbuffer->name ),
+		renderbuffer_id,
+		StringViewArgument( framebuffer->name ),
+		framebuffer_id,
+		StringViewArgument( attachment_name )
+	);
 	return true;
 }
 
@@ -1571,6 +1654,15 @@ renderer_texture_attach_to_framebuffer( Texture_ID texture_id, Renderer_Framebuf
 
 	// keep track of attachments?
 
+	StringView_ASCII attachment_name = renderer_framebuffer_attachment_name( attachment );
+	log_debug(
+		"Attached Texture '" StringViewFormat "' (#%u) to Framebuffer '" StringViewFormat "' (#%u) at " StringViewFormat ".",
+		StringViewArgument( texture->name ),
+		texture_id,
+		StringViewArgument( framebuffer->name ),
+		framebuffer_id,
+		StringViewArgument( attachment_name )
+	);
 	return true;
 }
 
@@ -1582,6 +1674,11 @@ opengl_create_and_bind_texture_2d( GLuint *id, StringView_ASCII debug_name ) {
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_TEXTURE, *id, debug_name.size, debug_name.data );
 #endif
+	log(
+		LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Created and bound 2D Texture '" StringViewFormat "' (#%u).",
+		StringViewArgument( debug_name ),
+		*id
+	);
 }
 
 bool
@@ -1609,6 +1706,13 @@ renderer_texture_upload( Texture_ID texture_id ) {
 		/*           data */ texture->bytes.data
 	);
 
+	log_debug(
+		"Uploaded 2D Texture '" StringViewFormat "' (#%u, %u bytes) to GPU memory (opengl_id: %u).",
+		StringViewArgument( texture->name ),
+		texture_id,
+		texture->bytes.size,
+		texture->opengl_id
+	);
 	return true;
 }
 
@@ -1672,6 +1776,15 @@ renderer_mesh_upload( Mesh_ID mesh_id ) {
 	u8 *indices_data = mesh->indices.data;
 	glBufferData( GL_ELEMENT_ARRAY_BUFFER, indices_size, indices_data, opengl_index_buffer_usage );
 
+	log_debug( "Uploaded Mesh '" StringViewFormat "' (#%u, %u vertices, %u indices) to GPU memory (VAO: %u, VBO: %u, EBO: %u).",
+		StringViewArgument( mesh->name ),
+		mesh_id,
+		mesh->vertices.size,
+		mesh->indices.size,
+		mesh->opengl_vao,
+		mesh->opengl_vbo,
+		mesh->opengl_ebo
+	);
 	return true;
 }
 

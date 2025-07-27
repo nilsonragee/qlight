@@ -1,6 +1,9 @@
 #include "texture.h"
 #include "../libs/stb/stb_image.h"
 
+#define QL_LOG_CHANNEL "Texture"
+#include "log.h"
+
 constexpr u64 TEXTURES_INITIAL_CAPACITY = 16;
 
 struct {
@@ -58,6 +61,15 @@ Texture_ID texture_create(
 	u32 texture_id = array_add( &g_textures.textures, texture );
 
 	g_textures.created += 1;
+	log_info( "Created '" StringViewFormat "' (#%u, %ux%u, " StringViewFormat ", " StringViewFormat ", %u bytes).",
+		StringViewArgument( texture.name ),
+		texture_id,
+		texture.width,
+		texture.height,
+		StringViewArgument( texture_format_name( texture.format ) ),
+		StringViewArgument( opengl_internal_texture_format_name( texture.opengl_internal_format ) ),
+		texture.bytes.size
+	);
 	return texture_id;
 }
 
@@ -82,6 +94,10 @@ static GLenum _texture_format_to_opengl( Texture_Format format ) {
 }
 
 Texture_ID texture_load_from_file( StringView_ASCII name, StringView_ASCII file_path ) {
+	log_debug( "Loading '" StringViewFormat "' from '" StringViewFormat "'...",
+		StringViewArgument( name ),
+		StringViewArgument( file_path )
+	);
 	Assert( name.size > 0 );
 	Assert( file_path.size > 0 );
 
@@ -99,7 +115,7 @@ Texture_ID texture_load_from_file( StringView_ASCII name, StringView_ASCII file_
 	if ( !texture_data.data )
 		return INVALID_TEXTURE_ID;
 
-	texture_data.size = width * height * color_channels * 1 /* GL_UNSIGNED_BYTE */;
+	texture_data.size = width * height * color_channels * sizeof( u8 ) /* GL_UNSIGNED_BYTE */;
 
 	GLint opengl_internal_format = _texture_format_to_opengl( expected_format );
 	Texture texture = {
@@ -117,6 +133,15 @@ Texture_ID texture_load_from_file( StringView_ASCII name, StringView_ASCII file_
 	Texture_ID texture_id = array_add( &g_textures.textures, texture );
 
 	g_textures.loaded += 1;
+	log_info( "Loaded '" StringViewFormat "' (#%u, %ux%u, " StringViewFormat ", " StringViewFormat ", %u bytes).",
+		StringViewArgument( texture.name ),
+		texture_id,
+		texture.width,
+		texture.height,
+		StringViewArgument( texture_format_name( texture.format ) ),
+		StringViewArgument( opengl_internal_texture_format_name( texture.opengl_internal_format ) ),
+		texture.bytes.size
+	);
 	return texture_id;
 }
 
