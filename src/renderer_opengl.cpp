@@ -174,7 +174,7 @@ create_default_textures() {
 	Texture *white_texture = texture_instance( white_texture_id );
 	u8 white_bytes[] = { /* R */ 255, /* G */ 255, /* B */ 255, /* A */ 255 };
 	white_texture->bytes.data = white_bytes;
-	white_texture->bytes.size = sizeof( white_bytes ) / sizeof( white_bytes[ 0 ] );
+	white_texture->bytes.size = ARRAY_SIZE( white_bytes );
 	renderer_texture_upload( white_texture_id );
 	g_renderer.texture_white = white_texture_id;
 
@@ -189,7 +189,7 @@ create_default_textures() {
 	Texture *black_texture = texture_instance( black_texture_id );
 	u8 black_bytes[] = { /* R */ 0, /* G */ 0, /* B */ 0, /* A */ 255 };
 	black_texture->bytes.data = black_bytes;
-	black_texture->bytes.size = sizeof( black_bytes ) / sizeof( black_bytes[ 0 ] );
+	black_texture->bytes.size = ARRAY_SIZE( black_bytes );
 	renderer_texture_upload( black_texture_id );
 	g_renderer.texture_black = black_texture_id;
 
@@ -210,7 +210,7 @@ create_default_textures() {
 		   130, 0,   200, 255   // (purple pixel)
 	};
 	purple_texture->bytes.data = purple_checkers_bytes;
-	purple_texture->bytes.size = sizeof( purple_checkers_bytes ) / sizeof( purple_checkers_bytes[ 0 ] );
+	purple_texture->bytes.size = ARRAY_SIZE( purple_checkers_bytes );
 	renderer_texture_upload( purple_texture_id );
 	g_renderer.texture_purple_checkers = purple_texture_id;
 }
@@ -248,7 +248,7 @@ setup_fullscreen_quad() {
 		{ .texture_uv = Vector2_f32( 1.0f, 0.0f ) }   // Top-left
 	};
 	CArrayView vertices_view = carray_view_create(
-		/*      size */ sizeof( quad_vertices ) / sizeof( quad_vertices[ 0 ] ),
+		/*      size */ ARRAY_SIZE( quad_vertices ),
 		/* item_size */ vertex_size,
 		/*      data */ quad_vertices
 	);
@@ -260,7 +260,7 @@ setup_fullscreen_quad() {
 		2, 3, 0
 	};
 	CArrayView indices_view = carray_view_create(
-		/*      size */ sizeof( quad_indices ) / sizeof( quad_indices[ 0 ] ),
+		/*      size */ ARRAY_SIZE( quad_indices ),
 		/* item_size */ index_type_size,
 		/*      data */ quad_indices
 	);
@@ -445,7 +445,7 @@ setup_geometry_buffer( u16 framebuffer_width, u16 framebuffer_height ) {
 		RendererFramebufferAttachment_Color1,  // normal
 		RendererFramebufferAttachment_Color2   // color + specular
 	};
-	u32 active_attachments_size = static_cast< u32 >( sizeof( active_attachments ) / sizeof( active_attachments[ 0 ] ) );
+	u32 active_attachments_size = ARRAY_SIZE( active_attachments );
 
 	renderer_set_active_framebuffer_color_attachments(
 		g_renderer.gbuffer.framebuffer,

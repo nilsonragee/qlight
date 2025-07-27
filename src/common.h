@@ -5,6 +5,7 @@
 #include "allocator.h"
 
 // #define For( count )  for ( uint32_t it = 0; it < count; count += 1 )
+#define ARRAY_SIZE( array )  sizeof( array ) / sizeof( array[ 0 ] )
 
 s8 QL_clamp(s8 x, s8 min, s8 max);
 u8 QL_clamp(u8 x, u8 min, u8 max);
