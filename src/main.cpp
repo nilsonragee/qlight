@@ -401,8 +401,9 @@ int main()
 		/* projection */ CameraProjection_Perspective,
 		/*   position */ Vector3_f32( 0.0f, 0.0f, -3.0f ),
 		/*   rotation */ quaternion_identity(),
+		/* ortho_size */ 5.0f,
 		/*        fov */ 80.0f,
-		/*     z_near */ 0.01f,
+		/*     z_near */ 0.1f,
 		/*      z_far */ 2000.0f,
 		/*   viewport */ Vector2_f32( 1280.0f, 720.0f )
 	);
@@ -487,12 +488,27 @@ int main()
 
 				ImGui::TextUnformatted("CAMERA:");
 
-				ImGui::InputFloat3("Position", &g_camera->position[ 0 ]);
-				ImGui::InputFloat4("Rotation (Quaternion)", &g_camera->rotation[ 0 ]);
-				ImGui::DragFloat("Field of View", &g_camera->fov, 1.0f, 1.0f, 179.0f);
-				ImGui::InputFloat("Clip Distance Near", &g_camera->z_near);
-				ImGui::InputFloat("Clip Distance Far", &g_camera->z_far);
-				ImGui::InputFloat2("Viewport Dimensions", &g_camera->viewport[ 0 ]);
+				bool update_view = false;
+				bool update_projection = false;
+				update_view |= ImGui::DragFloat3("Position", &g_camera->position[ 0 ], 0.5f, -1000.0f, 1000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+				update_view |= ImGui::DragFloat4("Rotation (Quaternion)", &g_camera->rotation[ 0 ], 0.001f, -1.0f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+				update_projection |= ImGui::DragFloat("Orthographic Size (World units)", &g_camera->orthographic_size, 0.1f, 1.0f, 100.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+				update_projection |= ImGui::DragFloat("Field of View", &g_camera->fov, 1.0f, 1.0f, 179.0f);
+				update_projection |= ImGui::DragFloat("Clip Distance Near", &g_camera->z_near, 0.01f, 0.01f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+				update_projection |= ImGui::DragFloat("Clip Distance Far", &g_camera->z_far, 1.0f, 100.0f, 5000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+				update_projection |= ImGui::DragFloat2("Viewport Dimensions", &g_camera->viewport[ 0 ], 10.0f, 100.0f, 8192.0f);
+				bool is_orthographic = g_camera->bits & CameraBit_IsOrthographic;
+				StringView_ASCII projection_name = ( is_orthographic ) ? "Orthographic" : "Perspective";
+				bool change_perspective = ImGui::Button( projection_name.data );
+				if ( change_perspective ) {
+					if ( is_orthographic )  g_camera->bits &= ~CameraBit_IsOrthographic;
+					else                    g_camera->bits |= CameraBit_IsOrthographic;
+				}
+				update_projection |= change_perspective;
+
+				if ( update_view )        g_camera->bits |= CameraBit_NeedsViewUpdate;
+				if ( update_projection )  g_camera->bits |= CameraBit_NeedsProjectionUpdate;
+
 				// ImGui::ColorEdit3("Clear color", &);
 				ImGui::Checkbox("Freeze", &freeze_camera);
 

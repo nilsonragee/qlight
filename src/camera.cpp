@@ -37,6 +37,7 @@ camera_create(
 	Camera_Projection projection,
 	Vector3_f32 position,
 	Quaternion rotation,
+	f32 orthographic_size,
 	f32 fov,
 	f32 z_near,
 	f32 z_far,
@@ -47,6 +48,7 @@ camera_create(
 		.bits = CameraBit_NeedsViewUpdate | CameraBit_NeedsProjectionUpdate,
 		.position = position,
 		.rotation = rotation,
+		.orthographic_size = orthographic_size,
 		.fov = fov,
 		.z_near = z_near,
 		.z_far = z_far,
@@ -62,12 +64,13 @@ camera_create(
 	u32 camera_idx = array_add( &g_cameras.cameras, camera );
 	StringView_ASCII projection_name = ( is_orthographic ) ? "Orthographic" : "Perspective";
 	log_info(
-		"Created '" StringViewFormat "' (#%u, '" StringViewFormat "', %.fx%.f, fov: %.f, z_near: %f, z_far: %f).",
+		"Created '" StringViewFormat "' (#%u, '" StringViewFormat "', %.fx%.f, ortho_size: %.1f, fov: %.1f, z_near: %.3f, z_far: %.1f).",
 		StringViewArgument( camera.name ),
 		camera_idx,
 		StringViewArgument( projection_name ),
 		camera.viewport.width,
 		camera.viewport.height,
+		camera.orthographic_size,
 		camera.fov,
 		camera.z_near,
 		camera.z_far
@@ -102,13 +105,16 @@ void camera_update_view( Camera *camera ) {
 	camera->view_matrix = camera_view_space_matrix2( camera->position, camera->rotation );
 }
 
+static int g_event_index = 0;
+
 void camera_update_projection( Camera *camera ) {
 	if ( camera->bits & CameraBit_IsOrthographic ) {
+		f32 aspect_ratio = camera->viewport.width / camera->viewport.height;
 		camera->projection_matrix = camera_projection_orthographic(
-			/*  x_min */ 0.0f,
-			/*  x_max */ camera->viewport.width,
-			/*  y_min */ 0.0f,
-			/*  y_max */ camera->viewport.height,
+			/*  x_min */ -camera->orthographic_size * aspect_ratio,
+			/*  x_max */ camera->orthographic_size * aspect_ratio,
+			/*  y_min */ -camera->orthographic_size,
+			/*  y_max */ camera->orthographic_size,
 			/* z_near */ camera->z_near,
 			/*  z_far */ camera->z_far
 		);
@@ -121,6 +127,23 @@ void camera_update_projection( Camera *camera ) {
 			/*        z_far */ camera->z_far
 		);
 	}
+
+	int i = g_event_index;
+	Vector4_f32 *v;
+	StringView_ASCII projection_name = ( camera->bits & CameraBit_IsOrthographic ) ? "Orthographic" : "Perspective";
+	log_info( "[%d] projection: " StringViewFormat "",
+		i,
+		StringViewArgument( projection_name )
+	);
+	v = &camera->projection_matrix[ 0 ];
+	log_info( "[%d] camera->projection[0]: [% .3f, % .3f, % .3f, % .3f]", i, v->x, v->y, v->z, v->w );
+	v = &camera->projection_matrix[ 1 ];
+	log_info( "[%d] camera->projection[1]: [% .3f, % .3f, % .3f, % .3f]", i, v->x, v->y, v->z, v->w );
+	v = &camera->projection_matrix[ 2 ];
+	log_info( "[%d] camera->projection[2]: [% .3f, % .3f, % .3f, % .3f]", i, v->x, v->y, v->z, v->w );
+	v = &camera->projection_matrix[ 3 ];
+	log_info( "[%d] camera->projection[3]: [% .3f, % .3f, % .3f, % .3f]", i, v->x, v->y, v->z, v->w );
+	g_event_index++;
 }
 
 Vector3_f32 camera_direction_right( Camera *camera ) {
@@ -146,7 +169,7 @@ void camera_set_rotation_quaternion( Camera *camera, Quaternion quaternion ) {
 void camera_rotate_by_quaternion( Camera *camera, Quaternion quaternion ) {
 	// Apply in Local Space (otherwise it would be in Global Space).
 	camera->rotation = quaternion_multiply( camera->rotation, quaternion );
-	// camera_reconstruct_rotation( camera );
+	camera_reconstruct_rotation( camera );
 	camera->bits |= CameraBit_NeedsViewUpdate;
 }
 
@@ -262,6 +285,13 @@ Quaternion quaternion_from_basis_vectors_matrix( Matrix3x3_f32 m ) {
 	// m[ 0 ] = vector right
 	// m[ 1 ] = vector up
 	// m[ 2 ] = vector forward
+	//
+	//    |    0     |    1     |    2      |
+	//    -----------------------------------
+	//  0 |   right.x    right.y    right.z |
+	//  1 |      up.x       up.y       up.z |
+	//  2 | forward.x  forward.y  forward.z |
+	//    -----------------------------------
 
 	// Trace helps decide the most numerically stable way
 	// to compute the quaternion components. If:
@@ -289,9 +319,9 @@ Quaternion quaternion_from_basis_vectors_matrix( Matrix3x3_f32 m ) {
 	if ( trace > 0.0f ) {
 		// `w` dominates
 		scaling_factor = sqrt( trace + 1.0f ) * 2.0f;
-		q.x = ( m[2][1] - m[1][2] ) / scaling_factor;
-		q.y = ( m[0][2] - m[2][0] ) / scaling_factor;
-		q.z = ( m[1][0] - m[0][1] ) / scaling_factor;
+		q.x = ( m[1][2] - m[2][1] ) / scaling_factor;
+		q.y = ( m[2][0] - m[0][2] ) / scaling_factor;
+		q.z = ( m[0][1] - m[1][0] ) / scaling_factor;
 		q.w = 0.25f * scaling_factor;
 	} else if ( ( m[0][0] > m[1][1] ) && ( m[0][0] > m[2][2] ) ) {
 		// `x` dominates
@@ -299,23 +329,24 @@ Quaternion quaternion_from_basis_vectors_matrix( Matrix3x3_f32 m ) {
 		q.x = 0.25f * scaling_factor;
 		q.y = ( m[0][1] + m[1][0] ) / scaling_factor;
 		q.z = ( m[0][2] + m[2][0] ) / scaling_factor;
-		q.w = ( m[2][1] - m[1][2] ) / scaling_factor;
+		q.w = ( m[1][2] - m[2][1] ) / scaling_factor;
 	} else if ( m[1][1] > m[2][2] ) {
 		// `y` dominates
 		scaling_factor = sqrt( 1.0f + m[1][1] - m[0][0] - m[2][2] ) * 2.0f;
 		q.x = ( m[0][1] + m[1][0] ) / scaling_factor;
 		q.y = 0.25f * scaling_factor;
 		q.z = ( m[1][2] + m[2][1] ) / scaling_factor;
-		q.w = ( m[0][2] - m[2][0] ) / scaling_factor;
+		q.w = ( m[2][0] - m[0][2] ) / scaling_factor;
 	} else {
 		// `z` dominates
 		scaling_factor = sqrt( 1.0f + m[2][2] - m[0][0] - m[1][1] ) * 2.0f;
-		q.x = ( m[0][2] + m[2][1] ) / scaling_factor;
+		q.x = ( m[0][2] + m[2][0] ) / scaling_factor;
 		q.y = ( m[1][2] + m[2][1] ) / scaling_factor;
 		q.z = 0.25f * scaling_factor;
-		q.w = ( m[1][0] - m[0][1] ) / scaling_factor;
+		q.w = ( m[0][1] - m[1][0] ) / scaling_factor;
 	}
 
+	q = normalize( q );
 	return q;
 }
 
@@ -324,10 +355,6 @@ void camera_update_view_and_rotation( Camera *camera, Vector3_f32 view_target, V
 	Vector3_f32 forward = rotate_vector3_by_quaternion( camera->rotation, WORLD_DIRECTION_FORWARD );
 	Vector3_f32 right = rotate_vector3_by_quaternion( camera->rotation, WORLD_DIRECTION_RIGHT );
 	Vector3_f32 up = rotate_vector3_by_quaternion( camera->rotation, WORLD_DIRECTION_UP );
-
-	forward = normalize( forward );
-	right = normalize( right );
-	up = normalize( up );
 
 	Matrix4x4_f32 &view = camera->view_matrix;
 	view[0][0] = right.x;
@@ -345,7 +372,6 @@ void camera_update_view_and_rotation( Camera *camera, Vector3_f32 view_target, V
 
 	// Compute quaternion rotation
 	camera->rotation = quaternion_from_basis_vectors( right, up, forward );
-	camera->rotation = normalize( camera->rotation );
 }
 
 Vector3_f32 rotate_vector3_by_quaternion( Quaternion q, Vector3_f32 v ) {

@@ -30,6 +30,7 @@ struct Camera {
 	Quaternion rotation;
 
 	// --- Projection parameters
+	f32 orthographic_size; // In world units: [-size; size]. Corrected with viewport's aspect ratio.
 	f32 fov;
 	f32 z_near; // near_clip_plane_distance
 	f32 z_far; // far_clip_plane_distance
@@ -50,6 +51,7 @@ camera_create(
 	Camera_Projection projection,
 	Vector3_f32 position,
 	Quaternion rotation,
+	f32 orthographic_size,
 	f32 fov,
 	f32 z_near,
 	f32 z_far,
