@@ -255,6 +255,7 @@ void load_texture( StringView_ASCII name, StringView_ASCII file_path, bool uploa
 }
 
 void load_textures() {
+#ifdef LOAD_TEXTURES
 	load_texture( "bark_diffuse", "resources/textures/bark_diffuse_x3072_expt1-255.png", true );
 	load_texture( "bark_normal", "resources/textures/bark_normal_x3072_expt1-255_gauss-bilat.png", true );
 
@@ -263,32 +264,39 @@ void load_textures() {
 
 	load_texture( "rocks-medium_diffuse", "resources/textures/rocks-medium_diffuse_x3072_expt1-394_flat.png", true );
 	load_texture( "rocks-medium_normal", "resources/textures/rocks-medium_normal_x3072_expt1-394_flat.png", true );
+#endif
 }
 
 void create_materials() {
 	Renderer_Shader_Program *shader = renderer_find_shader_program( "phong_program" );
 	Assert( shader );
-	Texture_ID diffuse;
-	Texture_ID normal;
+	Texture_ID diffuse = INVALID_TEXTURE_ID;
+	Texture_ID normal = INVALID_TEXTURE_ID;
 	Texture_ID specular = INVALID_TEXTURE_ID;
 
+//#define LOAD_TEXTURES
+#ifdef LOAD_TEXTURES
 	diffuse = texture_find( "bark_diffuse" );
 	normal = texture_find( "bark_normal" );
 	Assert( diffuse != INVALID_TEXTURE_ID );
 	Assert( normal != INVALID_TEXTURE_ID );
+#endif
 	material_create( "bark", shader, diffuse, normal, specular );
 
+#ifdef LOAD_TEXTURES
 	diffuse = texture_find( "dried-soil_diffuse" );
 	normal = texture_find( "dried-soil_normal" );
-	specular = INVALID_TEXTURE_ID;
 	Assert( diffuse != INVALID_TEXTURE_ID );
 	Assert( normal != INVALID_TEXTURE_ID );
+#endif
 	material_create( "dried-soil", shader, diffuse, normal, specular );
 
+#ifdef LOAD_TEXTURES
 	diffuse = texture_find( "rocks-medium_diffuse" );
 	normal = texture_find( "rocks-medium_normal" );
 	Assert( diffuse != INVALID_TEXTURE_ID );
 	Assert( normal != INVALID_TEXTURE_ID );
+#endif
 	material_create( "rocks-medium", shader, diffuse, normal, specular );
 }
 

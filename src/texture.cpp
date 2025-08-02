@@ -6,7 +6,7 @@
 
 constexpr u64 TEXTURES_INITIAL_CAPACITY = 16;
 
-struct {
+struct G_Texture {
 	Array< Texture > textures;
 
 	u32 created;
