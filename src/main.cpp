@@ -10,6 +10,8 @@
 #include "math.h"
 #include "renderer.h"
 #include "console.h"
+#include "transform.h"
+#include "camera.h"
 
 #define QL_LOG_CHANNEL "App"
 #include "log.h"
@@ -17,9 +19,8 @@
 //
 // --- Global variables ---
 //
-Camera camera;
+Camera *g_camera;
 Mouse mouse;
-Frame_Time frame_time;
 Screen screen;
 
 bool imgui_draw_edit_window = true;
@@ -34,56 +35,69 @@ void framebuffer_size_callback(GLFWwindow* window, int new_screen_width, int new
 	screen.width = new_screen_width;
 	screen.height = new_screen_height;
 	screen.aspect_ratio = (float)new_screen_width / (float)new_screen_height;
-	glViewport(0, 0, new_screen_width, new_screen_height);
+	// glViewport(0, 0, new_screen_width, new_screen_height);
 	log_info( "New window size: %dx%d.",
 		screen.width,
 		screen.height
 	);
 }
 
+static int g_event_index = 0;
 void mouse_callback(GLFWwindow* window, double new_mouse_x, double new_mouse_y) {
-	float offset_x = new_mouse_x - mouse.x;
-	float offset_y = mouse.y - new_mouse_y; // Reversed, since  y-coordinates go from bottom to top.
-	mouse.x = new_mouse_x;
-	mouse.y = new_mouse_y;
+	f32 offset_x = ( f32 )new_mouse_x - mouse.x;
+	f32 offset_y = mouse.y - ( f32 )new_mouse_y; // Reversed, since  y-coordinates go from bottom to top.
+	mouse.x = ( f32 )new_mouse_x;
+	mouse.y = ( f32 )new_mouse_y;
 
 	offset_x *= mouse.sensitivity;
 	offset_y *= mouse.sensitivity;
 
 	// In 'Cursor mode' we don't move camera.
 	if (!mouse.cursor_mode) {
-		camera.yaw += offset_x;
-		camera.pitch += offset_y;
-
-		if (camera.pitch > PITCH_MAX_ANGLE)
-			camera.pitch = PITCH_MAX_ANGLE;
-		if (camera.pitch < -PITCH_MAX_ANGLE)
-			camera.pitch = -PITCH_MAX_ANGLE;
-
-		glm::vec3 direction;
-		direction.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-		direction.y = sin(glm::radians(camera.pitch));
-		direction.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-
-		camera.front = glm::normalize(direction);
+		Quaternion delta_pitch = quaternion_from_axis_angle( WORLD_DIRECTION_RIGHT, radians( -offset_y ) );
+		Quaternion delta_yaw = quaternion_from_axis_angle( WORLD_DIRECTION_UP, radians( offset_x ) );
+		Quaternion rotation_delta = quaternion_multiply( delta_pitch, delta_yaw );
+		Quaternion *q;
+		int i = g_event_index;
+		q = &delta_pitch;
+		log_info( "[%d] delta_pitch: (%.3f, %.3f, %.3f, %.3f)", i, q->x, q->y, q->z, q->w );
+		q = &delta_yaw;
+		log_info( "[%d] delta_yaw: (%.3f, %.3f, %.3f, %.3f)", i, q->x, q->y, q->z, q->w );
+		q = &rotation_delta;
+		log_info( "[%d] rotation_delta: (%.3f, %.3f, %.3f, %.3f)", i, q->x, q->y, q->z, q->w );
+		q = &g_camera->rotation;
+		log_info( "[%d] (before) camera->rotation: (%.3f, %.3f, %.3f, %.3f)", i, q->x, q->y, q->z, q->w );
+		Vector4_f32 *v;
+		v = &g_camera->view_matrix[ 0 ];
+		log_info( "[%d] (before) camera->view[0]: [%.3f, %.3f, %.3f, %.3f]", i, v->x, v->y, v->z, v->w );
+		v = &g_camera->view_matrix[ 1 ];
+		log_info( "[%d] (before) camera->view[1]: [%.3f, %.3f, %.3f, %.3f]", i, v->x, v->y, v->z, v->w );
+		v = &g_camera->view_matrix[ 2 ];
+		log_info( "[%d] (before) camera->view[2]: [%.3f, %.3f, %.3f, %.3f]", i, v->x, v->y, v->z, v->w );
+		v = &g_camera->view_matrix[ 3 ];
+		log_info( "[%d] (before) camera->view[3]: [%.3f, %.3f, %.3f, %.3f]", i, v->x, v->y, v->z, v->w );
+		camera_rotate_by_quaternion( g_camera, rotation_delta );
+		log_info( "[%d] (after) camera->rotation: (%.3f, %.3f, %.3f, %.3f)", i, q->x, q->y, q->z, q->w );
+		g_event_index++;
 	}
 }
 
 void scroll_callback(GLFWwindow* window, double offset_x, double offset_y) {
 	if (!freeze_camera) {
-		camera.fov -= (float) offset_y;
-		log_info( "Camera FOV: %.f.",
-			camera.fov
-		);
+		camera_zoom( g_camera, ( f32 ) -offset_y );
+		log_info( "Camera FOV: %.f.", g_camera->fov );
 	}
 }
 
 void process_input(GLFWwindow* window) {
 	if (freeze_camera) return;
-	// Temp.
-	float camera_speed = 3.0f * frame_time.delta;
-	glm::vec3 cross_front_up = glm::cross(camera.front, camera.up);
-	glm::vec3 camera_right = glm::normalize(cross_front_up);
+
+	f32 dt = renderer_frame_time_delta();
+	f32 speed = 3.0f * ( dt / 1000.0f ); // ms -> sec
+
+	Vector3_f32 camera_right = camera_direction_right( g_camera );
+	Vector3_f32 camera_up = camera_direction_up( g_camera );
+	Vector3_f32 camera_forward = camera_direction_forward( g_camera );
 
 	//      if(glfwGetKey(window, GLFW_KEY)) == GLFW_PRESS)
 	//  or: if(glfwGetKey(window, GLFW_KEY))
@@ -92,31 +106,27 @@ void process_input(GLFWwindow* window) {
 	// where there is additional GLFW_REPEAT and GLFW_PRESS is treated
 	// as a single press. Here, GLFW_PRESS updates every frame.
 	if (glfwGetKey(window, GLFW_KEY_W)) {
-		camera.position += camera.front * camera_speed;
+		camera_move( g_camera, camera_forward * speed );
 	}
 
 	if (glfwGetKey(window, GLFW_KEY_S)) {
-		camera.position -= camera.front * camera_speed;
+		camera_move( g_camera, -camera_forward * speed );
 	}
 
 	if (glfwGetKey(window, GLFW_KEY_A)) {
-		camera.position -= camera_right * camera_speed;
+		camera_move( g_camera, -camera_right * speed );
 	}
 
 	if (glfwGetKey(window, GLFW_KEY_D)) {
-		camera.position += camera_right * camera_speed;
-	}
-
-	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
-		// Move camera up relative to the world, not the camera view.
-		// camera.position -= camera.up * camera_speed;
-		camera.position -= glm::vec3(0.0f, 1.0f, 0.0f) * camera_speed;
+		camera_move( g_camera, camera_right * speed );
 	}
 
 	if (glfwGetKey(window, GLFW_KEY_SPACE)) {
-		// Move camera up relative to the world, not the camera view.
-		// camera.position += camera.up * camera_speed;
-		camera.position += glm::vec3(0.0f, 1.0f, 0.0f) * camera_speed;
+		camera_move( g_camera, camera_up * speed );
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
+		camera_move( g_camera, -camera_up * speed );
 	}
 }
 
@@ -365,6 +375,7 @@ int main()
 	load_textures();
 	load_shaders();
 	create_materials();
+	cameras_init();
 
 	map_change( "empty" );
 
@@ -377,21 +388,26 @@ int main()
 
 	Map *map = map_current();
 
-	Renderer_Camera fpv_camera = {
-		.position = Vector3_f32 { 0.0f, 0.0f, 3.0f },
-		.rotation = Quaternion { 0.0f, 0.0f, 0.0f, 1.0f },
-		.direction_front = WORLD_DIRECTION_FRONT,
-		.direction_up = WORLD_DIRECTION_UP,
-		.view_matrix = Matrix4x4_f32(),
-		.projection_matrix = Matrix4x4_f32(),
-		.fov = 90.0f,
-		.near_clip_plane_distance = 0.01f,
-		.far_clip_plane_distance = 200.0f,
-		.aspect_ratio = 1920.0f / 1080.0f
-	};
+	g_camera = camera_create(
+		/*       name */ "Main Camera",
+		/* projection */ CameraProjection_Perspective,
+		/*   position */ Vector3_f32( 0.0f, 0.0f, -3.0f ),
+		/*   rotation */ quaternion_identity(),
+		/*        fov */ 80.0f,
+		/*     z_near */ 0.01f,
+		/*      z_far */ 2000.0f,
+		/*   viewport */ Vector2_f32( 1280.0f, 720.0f )
+	);
 
-	renderer_set_view_matrix_pointer( &fpv_camera.view_matrix );
-	renderer_set_projection_matrix_pointer( &fpv_camera.projection_matrix );
+	glViewport(
+		0,
+		0,
+		( GLsizei ) g_camera->viewport.width,
+		( GLsizei ) g_camera->viewport.height
+	);
+
+	renderer_set_view_matrix_pointer( &g_camera->view_matrix );
+	renderer_set_projection_matrix_pointer( &g_camera->projection_matrix );
 
 	log_info(
 		"GPU Vendor: " StringViewFormat ", GPU Name: " StringViewFormat,
@@ -431,8 +447,7 @@ int main()
 	{
 		process_input(window);
 
-		fpv_camera.projection_matrix = projection_perspective( radians( fpv_camera.fov ), fpv_camera.aspect_ratio, fpv_camera.near_clip_plane_distance, fpv_camera.far_clip_plane_distance );
-		fpv_camera.view_matrix = projection_view( fpv_camera.position, fpv_camera.position + fpv_camera.direction_front, fpv_camera.direction_up );
+		cameras_update();
 
 		renderer_queue_draw_command(
 			/*     mesh_id */ cube_mesh_id,
@@ -464,10 +479,12 @@ int main()
 
 				ImGui::TextUnformatted("CAMERA:");
 
-				ImGui::InputFloat3("Position", &fpv_camera.position.x);
-				ImGui::DragFloat("Field of view", &fpv_camera.fov, 1.0f, 1.0f, 179.0f);
-				// ImGui::DragFloat("Pitch", &camera.pitch);
-				// ImGui::DragFloat("Yaw", &camera.yaw);
+				ImGui::InputFloat3("Position", &g_camera->position[ 0 ]);
+				ImGui::InputFloat4("Rotation (Quaternion)", &g_camera->rotation[ 0 ]);
+				ImGui::DragFloat("Field of View", &g_camera->fov, 1.0f, 1.0f, 179.0f);
+				ImGui::InputFloat("Clip Distance Near", &g_camera->z_near);
+				ImGui::InputFloat("Clip Distance Far", &g_camera->z_far);
+				ImGui::InputFloat2("Viewport Dimensions", &g_camera->viewport[ 0 ]);
 				// ImGui::ColorEdit3("Clear color", &);
 				ImGui::Checkbox("Freeze", &freeze_camera);
 
@@ -493,9 +510,12 @@ int main()
 				ImGui::Separator();
 				ImGui::TextUnformatted("RENDERER:");
 
+				f32 frame_time = renderer_frame_time_delta();
+
 				ImGui::Text("GPU Vendor: " StringViewFormat, StringViewArgument( renderer_device_vendor() ));
 				ImGui::Text("GPU Name: " StringViewFormat, StringViewArgument( renderer_device_name() ));
-				ImGui::Text("Frametime: %.3f ms/frame (%.1f FPS)", 1000.0f / imgui_io.Framerate, imgui_io.Framerate);
+				ImGui::Text("ImGui: Frametime: %.3f ms/frame (%.1f FPS)", 1000.0f / imgui_io.Framerate, imgui_io.Framerate);
+				ImGui::Text("Renderer: Frametime: %.3f ms/frame (%.1f FPS)", frame_time, 1000.0f / frame_time);
 
 			}
 

@@ -34,12 +34,6 @@ f32 inverse_sqrt_general( f32 x ) {
 	return 1.0f / sqrtf( x );
 }
 
-Vector3_f32 normalize( Vector3_f32 v ) {
-	Vector3_f32 result;
-	result = v * inverse_sqrt( dot( v, v ) );
-	return result;
-}
-
 Vector3_f32 cross( Vector3_f32 lhs, Vector3_f32 rhs ) {
 	Vector3_f32 result = {
 		lhs.y * rhs.z  -  rhs.y * lhs.z,
@@ -53,6 +47,17 @@ Vector3_f32 cross( Vector3_f32 lhs, Vector3_f32 rhs ) {
 f32 dot( Vector3_f32 lhs, Vector3_f32 rhs ) {
 	Vector3_f32 vector = lhs * rhs;
 	f32 result = vector.x + vector.y + vector.z;
+	return result;
+}
+
+f32 dot( Vector4_f32 lhs, Vector4_f32 rhs ) {
+	Vector4_f32 vector = lhs * rhs;
+	f32 result = ( vector.x + vector.y )  +  ( vector.z + vector.w );
+	return result;
+}
+
+Vector3_f32 normalize( Vector3_f32 v ) {
+	Vector3_f32 result = v * inverse_sqrt( dot( v, v ) );
 	return result;
 }
 
@@ -3125,6 +3130,22 @@ Vector3_f32 Vector3_f32::operator / (f32 rhs) {
 		static_cast<f32>(this->x / rhs),
 		static_cast<f32>(this->y / rhs),
 		static_cast<f32>(this->z / rhs)
+	};
+}
+
+Vector3_f32 Vector3_f32::operator - () {
+	return Vector3_f32 {
+		static_cast<f32>(-this->x),
+		static_cast<f32>(-this->y),
+		static_cast<f32>(-this->z)
+	};
+}
+
+Vector3_f32 Vector3_f32::operator - () const {
+	return Vector3_f32 {
+		static_cast<f32>(-this->x),
+		static_cast<f32>(-this->y),
+		static_cast<f32>(-this->z)
 	};
 }
 

@@ -16,10 +16,6 @@ constexpr float NEAR_CLIP_PLANE_DISTANCE = 0.01f;
 constexpr float FAR_CLIP_PLANE_DISTANCE = 200.0f;
 constexpr float PITCH_MAX_ANGLE = 89.0f;
 
-constexpr Vector3_f32 WORLD_DIRECTION_RIGHT = Vector3_f32( 1.0f,  0.0f,  0.0f );
-constexpr Vector3_f32 WORLD_DIRECTION_UP    = Vector3_f32( 0.0f,  1.0f,  0.0f );
-constexpr Vector3_f32 WORLD_DIRECTION_FRONT = Vector3_f32( 0.0f,  0.0f,  1.0f );
-
 enum Renderer_Shader_Kind : u32 {
 	RendererShaderKind_Vertex = 0,
 	RendererShaderKind_TesselationControl,
@@ -190,19 +186,6 @@ struct Vertex_3D {
 	// Vector3_f32 texture_uvw;
 };
 
-struct Renderer_Camera {
-	Vector3_f32 position;
-	Quaternion rotation;
-	Vector3_f32 direction_front;
-	Vector3_f32 direction_up;
-	Matrix4x4_f32 view_matrix;
-	Matrix4x4_f32 projection_matrix;
-	f32 fov;
-	f32 near_clip_plane_distance;
-	f32 far_clip_plane_distance;
-	f32 aspect_ratio;
-};
-
 bool renderer_init();
 void renderer_shutdown();
 
@@ -362,5 +345,8 @@ renderer_set_ambient_light_color( Vector3_f32 ambient_light );
 
 StringView_ASCII
 renderer_framebuffer_attachment_name( Renderer_Framebuffer_Attachment attachment );
+
+f32
+renderer_frame_time_delta();
 
 #endif /* QLIGHT_RENDERER_H */

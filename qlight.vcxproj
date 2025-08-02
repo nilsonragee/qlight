@@ -108,6 +108,7 @@
     <ClCompile Include="libs\imgui\imgui_widgets.cpp" />
     <ClCompile Include="libs\stb\stb_image.cpp" />
     <ClCompile Include="src\allocator.cpp" />
+    <ClCompile Include="src\camera.cpp" />
     <ClCompile Include="src\carray.cpp" />
     <ClCompile Include="src\common.cpp" />
     <ClCompile Include="src\console.cpp" />
@@ -136,6 +137,7 @@
     <ClInclude Include="libs\stb\stb_image.h" />
     <ClInclude Include="src\allocator.h" />
     <ClInclude Include="src\array.h" />
+    <ClInclude Include="src\camera.h" />
     <ClInclude Include="src\carray.h" />
     <ClInclude Include="src\common.h" />
     <ClInclude Include="src\console.h" />

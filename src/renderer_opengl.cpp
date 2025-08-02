@@ -1337,6 +1337,10 @@ geometry_pass_draw_same_material_commands( ArrayView< Renderer_Render_Command > 
 	}
 }
 
+// TODO: Remove
+#include "opengl.h"
+extern Screen screen;
+
 static void
 draw_pass_geometry() {
 	// sort render queue
@@ -1394,9 +1398,9 @@ draw_pass_geometry() {
 		/*           source */ geometry_framebuffer->opengl_framebuffer,
 		/*      destination */ 0,
 		/*      source rect */ 0, 0, 1280, 720,
-		/* destination rect */ 0, 0, 1280, 720,
+		/* destination rect */ 0, 0, screen.width, screen.height,
 		/*             mask */ GL_COLOR_BUFFER_BIT,
-		/*           filter */ GL_NEAREST
+		/*           filter */ GL_LINEAR
 	);
 }
 
@@ -1542,7 +1546,7 @@ renderer_draw_frame() {
 	// renderer_draw_ui_pass();
 
 	g_renderer.frame_time.current = glfwGetTime();
-	g_renderer.frame_time.delta = g_renderer.frame_time.current - g_renderer.frame_time.last;
+	g_renderer.frame_time.delta = ( g_renderer.frame_time.current - g_renderer.frame_time.last ) * 1000.0f; // sec -> ms
 	g_renderer.frame_time.last = g_renderer.frame_time.current;
 
 	array_clear( &g_renderer.render_queue );
@@ -1919,4 +1923,9 @@ renderer_framebuffer_attachment_name( Renderer_Framebuffer_Attachment attachment
 		case RendererFramebufferAttachment_None:
 		default:                                  return ( const char *)NULL;
 	}
+}
+
+f32
+renderer_frame_time_delta() {
+	return g_renderer.frame_time.delta;
 }

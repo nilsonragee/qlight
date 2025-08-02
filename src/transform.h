@@ -29,8 +29,7 @@ void transform_recalculate_matrices( Transform *transform );
 bool transform_recalculate_dirty_matrices( Transform *transform );
 
 bool transform_is_dirty( Transform *transform );
-void transform_set_dirty( Transform *transform );
-void transform_clear_dirty( Transform *transform );
+void transform_set_dirty( Transform *transform, bool dirty );
 
 Matrix3x3_f32 quaternion_to_rotation_matrix( Quaternion q );
 
@@ -39,12 +38,23 @@ Matrix4x4_f32 transform_matrix_rotate_matrix( Matrix4x4_f32 *model, Matrix3x3_f3
 Matrix4x4_f32 transform_matrix_rotate_quaternion( Matrix4x4_f32 *model, Quaternion rotation );
 Matrix4x4_f32 transform_matrix_translate( Matrix4x4_f32 *model, Vector3_f32 position );
 
-// Right-handed, [-1, 1] depth range for the NDC (normalized device coordinates)
-Matrix4x4_f32 projection_perspective( f32 fov_vertical_radians, f32 aspect_ratio, f32 z_near, f32 z_far );
+Quaternion yxz_euler_to_quaternion_rotation( Vector3_f32 yxz_euler );
+inline Quaternion yxz_euler_degrees_to_quaternion_rotation( Vector3_f32 yxz_euler ) {
+	yxz_euler.x = radians( yxz_euler.x );
+	yxz_euler.y = radians( yxz_euler.y );
+	yxz_euler.z = radians( yxz_euler.z );
+	return yxz_euler_to_quaternion_rotation( yxz_euler );
+}
 
+Vector3_f32 quaternion_to_yxz_euler_rotation( Quaternion quaternion );
+inline Vector3_f32 quaternion_to_yxz_euler_degrees_rotation( Quaternion quaternion ) {
+	Vector3_f32 yxz_euler = quaternion_to_yxz_euler_rotation( quaternion );
+	yxz_euler.x = degrees( yxz_euler.x );
+	yxz_euler.y = degrees( yxz_euler.y );
+	yxz_euler.z = degrees( yxz_euler.z );
+	return yxz_euler;
+}
 
-// fpv_camera.view_matrix = glm::lookAt(fpv_camera.position, fpv_camera.position + fpv_camera.direction_front, fpv_camera.direction_up);
-// glm::lookAt( Vector3 eye, Vector3 center, Vector3 up );
-Matrix4x4_f32 projection_view( Vector3_f32 view_position, Vector3_f32 view_point, Vector3_f32 world_up );
+Quaternion normalize( Quaternion q );
 
 #endif /* QLIGHT_TRANSFORM_H */

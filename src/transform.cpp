@@ -27,7 +27,7 @@ Transform transform_create() {
 		}
 	};
 
-	transform_set_dirty( &transform );
+	transform_set_dirty( &transform, true );
 	return transform;
 }
 
@@ -86,7 +86,7 @@ void transform_recalculate_matrices( Transform *transform ) {
 	}
 
 	// model_matrix[ 0 ][ 3 ]  INFINITY -> 0.0
-	transform_clear_dirty( transform );
+	transform_set_dirty( transform, false );
 
 	/*
 	model = transform_matrix_scale( &model, transform->scale );
@@ -109,12 +109,9 @@ bool transform_is_dirty( Transform *transform ) {
 	return ( transform->model_matrix[ 0 ][ 3 ] == INFINITY );
 }
 
-void transform_set_dirty( Transform *transform ) {
-	transform->model_matrix[ 0 ][ 3 ] = INFINITY;
-}
-
-void transform_clear_dirty( Transform *transform ) {
-	transform->model_matrix[ 0 ][ 3 ] = 0.0f;
+void transform_set_dirty( Transform *transform, bool dirty ) {
+	f32 value = ( dirty ) ? INFINITY : 0.0f;
+	transform->model_matrix[ 0 ][ 3 ] = value;
 }
 
 Matrix3x3_f32 quaternion_to_rotation_matrix( Quaternion q ) {
@@ -197,40 +194,66 @@ Matrix4x4_f32 transform_matrix_translate( Matrix4x4_f32 *model, Vector3_f32 posi
 	return result;
 }
 
-Matrix4x4_f32 projection_perspective( f32 fov_vertical_radians, f32 aspect_ratio, f32 z_near, f32 z_far ) {
-	// Right-handed, [-1, 1] depth range for the NDC (normalized device coordinates)
-	Matrix4x4_f32 result = Matrix4x4_f32( 0.0f );
+Quaternion yxz_euler_to_quaternion_rotation( Vector3_f32 yxz_euler ) {
+	f32 half_roll = yxz_euler.z / 2.0f;
+	f32 half_pitch = yxz_euler.x / 2.0f;
+	f32 half_yaw = yxz_euler.y / 2.0f;
 
-	f32 tan_half_fov = tan( fov_vertical_radians / 2.0f );
+	f32 cos_roll = cos( half_roll );
+	f32 sin_roll = sin( half_roll );
+	f32 cos_pitch = cos( half_pitch );
+	f32 sin_pitch = sin( half_pitch );
+	f32 cos_yaw = cos( half_yaw );
+	f32 sin_yaw = sin( half_yaw );
 
-	result[ 0 ][ 0 ] = 1.0f / ( aspect_ratio * tan_half_fov );
-	result[ 1 ][ 1 ] = 1.0f / tan_half_fov;
-	result[ 2 ][ 2 ] = - ( z_far + z_near ) / ( z_far - z_near );
-	result[ 2 ][ 3 ] = - 1.0f;
-	result[ 3 ][ 2 ] = - ( 2.0f * z_far * z_near ) / ( z_far - z_near );
-
+	Quaternion result;
+	result.w = cos_roll * cos_pitch * cos_yaw  +  sin_roll * cos_pitch * sin_yaw;
+	result.x = cos_roll * sin_pitch * cos_yaw  +  sin_roll * cos_pitch * sin_yaw;
+	result.y = cos_roll * cos_pitch * sin_yaw  +  sin_roll * sin_pitch * cos_yaw;
+	result.z = sin_roll * cos_pitch * cos_yaw  +  cos_roll * sin_pitch * sin_yaw;
 	return result;
 }
 
-Matrix4x4_f32 projection_view( Vector3_f32 view_position, Vector3_f32 view_point, Vector3_f32 world_up ) {
-	// Right-handed
-	Vector3_f32 forward = Vector3_f32( normalize( view_position - view_point ) );
-	Vector3_f32 side = Vector3_f32( normalize( cross( forward, world_up ) ) );
-	Vector3_f32 up = Vector3_f32( cross( side, forward ) );
+Vector3_f32 quaternion_to_yxz_euler_rotation( Quaternion quaternion ) {
+	f32 x = quaternion.x;
+	f32 y = quaternion.y;
+	f32 z = quaternion.z;
+	f32 w = quaternion.w;
 
-	Matrix4x4_f32 result;
-	result[0][0] = side.x;
-	result[1][0] = side.y;
-	result[2][0] = side.z;
-	result[0][1] = up.x;
-	result[1][1] = up.y;
-	result[2][1] = up.z;
-	result[0][2] = - forward.x;
-	result[1][2] = - forward.y;
-	result[2][2] = - forward.z;
-	result[3][0] = - dot( side, view_position );
-	result[3][1] = - dot( up, view_position );
-	result[3][2] = dot( forward, view_position );
+	f32 sin_pitch = 2.0f * ( w * x  -  y * z );
+	f32 pitch;
+	// Handle gimbal lock
+	if      ( sin_pitch >=  1.0f )  pitch = PI / 2.0f;
+	else if ( sin_pitch <= -1.0f )  pitch = -PI / 2.0f;
+	else                            pitch = asin( sin_pitch );
 
+	f32 roll = atan2(
+		       2.0f * ( w * z  +  x * y ),
+		1.0f - 2.0f * ( z * z  +  x * x )
+	);
+
+	f32 yaw = atan2(
+		       2.0f * ( w * y  +  x * z ),
+		1.0f - 2.0f * ( y * y  +  x * x )
+	);
+
+	Vector3_f32 yxz_euler;
+	yxz_euler.x = pitch;
+	yxz_euler.y = yaw;
+	yxz_euler.z = roll;
+	return yxz_euler;
+}
+
+Quaternion normalize( Quaternion q ) {
+	f32 length = sqrt( dot( q, q ) );
+	if ( length < 0 )
+		return Quaternion( 0.0f, 0.0f, 0.0f, 1.0f );
+	
+	f32 one_over_length = 1.0f / length;
+	Quaternion result;
+	result.x = q.x * one_over_length;
+	result.y = q.y * one_over_length;
+	result.z = q.z * one_over_length;
+	result.w = q.w * one_over_length;
 	return result;
 }

@@ -78,6 +78,7 @@ inline f32 inverse_sqrt( f32 x )  { return inverse_sqrt_fast( x ); }
 Vector3_f32 normalize( Vector3_f32 v );
 Vector3_f32 cross( Vector3_f32 lhs, Vector3_f32 rhs );
 f32 dot( Vector3_f32 lhs, Vector3_f32 rhs );
+f32 dot( Vector4_f32 lhs, Vector4_f32 rhs );
 
 //-----------------------------------------------------------------------------
 // [SECTION] Vector2: s8 -> u8 -> s16 -> u16 -> s32 -> u32 -> s64 -> u64 -> f32 -> f64
@@ -728,6 +729,9 @@ struct Vector3_f32 {
 	Vector3_f32 operator - (f32 rhs);
 	Vector3_f32 operator * (f32 rhs);
 	Vector3_f32 operator / (f32 rhs);
+
+	Vector3_f32 operator - ();
+	Vector3_f32 operator - () const;
 };
 
 struct Vector3_f64 {
@@ -1276,5 +1280,9 @@ Matrix4x4_f64  matrix4x4_f64_transpose(Matrix4x4_f32 matrix);
           f64  matrix4x4_f64_determinant(Matrix4x4_f32 matrix);
 Matrix4x4_f64  matrix4x4_f64_inverse(Matrix4x4_f32 matrix);
 Matrix4x4_f64  matrix4x4_f64_multiply(Matrix4x4_f32 lhs, Matrix4x4_f32 rhs);
+
+constexpr Vector3_f32 WORLD_DIRECTION_RIGHT   = Vector3_f32( 1.0f,  0.0f,  0.0f );
+constexpr Vector3_f32 WORLD_DIRECTION_UP      = Vector3_f32( 0.0f,  1.0f,  0.0f );
+constexpr Vector3_f32 WORLD_DIRECTION_FORWARD = Vector3_f32( 0.0f,  0.0f,  1.0f );
 
 #endif /* QLIGHT_MATH_H */
