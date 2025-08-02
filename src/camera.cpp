@@ -23,7 +23,7 @@ u32 cameras_update() {
 	if ( !g_cameras.cameras.data )
 		return updated;
 
-	for ( u32 camera_idx = 0; camera_idx <= g_cameras.cameras.size; camera_idx += 1 ) {
+	for ( u32 camera_idx = 0; camera_idx < g_cameras.cameras.size; camera_idx += 1 ) {
 		Camera *camera = &g_cameras.cameras.data[ camera_idx ];
 		updated += camera_update( camera );
 	}
