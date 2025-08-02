@@ -57,7 +57,23 @@ f32 dot( Vector4_f32 lhs, Vector4_f32 rhs ) {
 }
 
 Vector3_f32 normalize( Vector3_f32 v ) {
-	Vector3_f32 result = v * inverse_sqrt( dot( v, v ) );
+	// `inverse_sqrt_fast` produces significant inaccuracy.
+	// `inverse_sqrt_refined` yields a very close approximation
+	//  to a precise result, but still is not exactly correct.
+	//
+	// For example:
+	// v = ( 0, 1, 0 );
+	// inverse_sqrt_fast( dot( v, v ) ) = 0.999755859;
+	// inverse_sqrt_refined( dot( v, v ) ) = 0.999999940;
+	// inverse_sqrt_general( dot( v, v ) ) = 1;
+	//
+	// Normalizing is probably the last place expected to
+	//  include inaccuracies, even marginal, so let us
+	//  keep it precise.
+
+	// Vector3_f32 fast = v * inverse_sqrt_fast( dot( v, v ) );
+	// Vector3_f32 refined = v * inverse_sqrt_refined( dot( v, v ) );
+	Vector3_f32 result = v * inverse_sqrt_general( dot( v, v ) );
 	return result;
 }
 
