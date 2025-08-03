@@ -166,9 +166,16 @@ void camera_set_rotation_quaternion( Camera *camera, Quaternion quaternion ) {
 	camera->bits |= CameraBit_NeedsViewUpdate;
 }
 
-void camera_rotate_by_quaternion( Camera *camera, Quaternion quaternion ) {
+void camera_rotate_by_quaternion_local_space( Camera *camera, Quaternion quaternion ) {
 	// Apply in Local Space (otherwise it would be in Global Space).
 	camera->rotation = quaternion_multiply( camera->rotation, quaternion );
+	camera_reconstruct_rotation( camera );
+	camera->bits |= CameraBit_NeedsViewUpdate;
+}
+
+void camera_rotate_by_quaternion_global_space( Camera *camera, Quaternion quaternion ) {
+	// Apply in Global space
+	camera->rotation = quaternion_multiply( quaternion, camera->rotation );
 	camera_reconstruct_rotation( camera );
 	camera->bits |= CameraBit_NeedsViewUpdate;
 }
@@ -200,7 +207,7 @@ void camera_set_clip_distance( Camera *camera, f32 z_near, f32 z_far ) {
 }
 
 void camera_look_at( Camera *camera, Vector3_f32 position ) {
-	camera_update_view_and_rotation( camera, position, WORLD_DIRECTION_UP );
+	camera_update_view_and_rotation( camera );
 }
 
 Matrix4x4_f32 camera_projection_perspective( f32 fov_vertical_radians, f32 aspect_ratio, f32 z_near, f32 z_far ) {
@@ -350,7 +357,7 @@ Quaternion quaternion_from_basis_vectors_matrix( Matrix3x3_f32 m ) {
 	return q;
 }
 
-void camera_update_view_and_rotation( Camera *camera, Vector3_f32 view_target, Vector3_f32 world_up ) {
+void camera_update_view_and_rotation( Camera *camera ) {
 	// Compute view matrix
 	Vector3_f32 forward = rotate_vector3_by_quaternion( camera->rotation, WORLD_DIRECTION_FORWARD );
 	Vector3_f32 right = rotate_vector3_by_quaternion( camera->rotation, WORLD_DIRECTION_RIGHT );

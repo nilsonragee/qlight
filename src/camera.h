@@ -63,7 +63,7 @@ Camera * camera_find( StringView_ASCII name );
 bool camera_update( Camera *camera ); // Updates view and projection conditionally
 void camera_update_view( Camera *camera ); // Always updates view
 void camera_update_projection( Camera *camera ); // Always updates projection
-void camera_update_view_and_rotation( Camera *camera, Vector3_f32 view_target, Vector3_f32 world_up );
+void camera_update_view_and_rotation( Camera *camera );
 
 Vector3_f32 camera_direction_right( Camera *camera );
 Vector3_f32 camera_direction_up( Camera *camera );
@@ -78,6 +78,9 @@ inline void camera_set_rotation_yxz_euler_degrees( Camera *camera, Vector3_f32 y
 	Quaternion rotation = yxz_euler_degrees_to_quaternion_rotation( yxz_euler );
 	camera_set_rotation_quaternion( camera, rotation );
 }
+
+void camera_rotate_by_quaternion_local_space( Camera *camera, Quaternion quaternion );
+void camera_rotate_by_quaternion_global_space( Camera *camera, Quaternion quaternion );
 
 void camera_rotate_by_quaternion( Camera *camera, Quaternion quaternion );
 inline void camera_rotate_by_yxz_euler( Camera *camera, Vector3_f32 yxz_euler ) {
