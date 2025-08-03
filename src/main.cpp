@@ -126,11 +126,15 @@ void process_input(GLFWwindow* window) {
 	}
 
 	if (glfwGetKey(window, GLFW_KEY_SPACE)) {
-		camera_move( g_camera, camera_up * speed );
+		// camera_move( g_camera, camera_up * speed );
+		Vector3_f32 world_up = WORLD_DIRECTION_UP;
+		camera_move( g_camera, world_up * speed );
 	}
 
 	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
-		camera_move( g_camera, -camera_up * speed );
+		// camera_move( g_camera, -camera_up * speed );
+		Vector3_f32 world_up = WORLD_DIRECTION_UP;
+		camera_move( g_camera, -world_up * speed );
 	}
 }
 
