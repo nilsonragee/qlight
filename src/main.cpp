@@ -28,6 +28,8 @@ bool imgui_draw_demo_window = false;
 bool freeze_light_change = false;
 bool freeze_camera = false;
 
+Vector2_f32 g_cursor_position;
+
 //
 // --- Callbacks ---
 //
@@ -44,16 +46,16 @@ void framebuffer_size_callback(GLFWwindow* window, int new_screen_width, int new
 
 static int g_event_index = 0;
 void mouse_callback(GLFWwindow* window, double new_mouse_x, double new_mouse_y) {
+	// In 'Cursor mode' we don't move camera.
 	f32 offset_x = ( f32 )new_mouse_x - mouse.x;
 	f32 offset_y = mouse.y - ( f32 )new_mouse_y; // Reversed, since  y-coordinates go from bottom to top.
+
 	mouse.x = ( f32 )new_mouse_x;
 	mouse.y = ( f32 )new_mouse_y;
 
-	offset_x *= mouse.sensitivity;
-	offset_y *= mouse.sensitivity;
-
-	// In 'Cursor mode' we don't move camera.
 	if (!mouse.cursor_mode) {
+		offset_x *= mouse.sensitivity;
+		offset_y *= mouse.sensitivity;
 		Quaternion delta_pitch = quaternion_from_axis_angle( WORLD_DIRECTION_RIGHT, radians( -offset_y ) );
 		Quaternion delta_yaw = quaternion_from_axis_angle( WORLD_DIRECTION_UP, radians( offset_x ) );
 		Quaternion *q;
@@ -149,10 +151,15 @@ void single_press_key_callback(GLFWwindow* window, int key, int scancode, int ac
 
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		mouse.cursor_mode = !mouse.cursor_mode;
-
 		if (mouse.cursor_mode) {
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			glfwSetCursorPos(window, g_cursor_position.x, g_cursor_position.y);
 		} else {
+			g_cursor_position.x = mouse.x;
+			g_cursor_position.y = mouse.y;
+			mouse.x = screen.width / 2.0f;
+			mouse.y = screen.height / 2.0f;
+			glfwSetCursorPos(window, mouse.x, mouse.y);
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		}
 
@@ -371,6 +378,11 @@ int main()
 	// Keys which are being listened continuously are
 	// in process_input().
 	glfwSetKeyCallback(window, single_press_key_callback);
+
+	mouse.x = screen.width / 2.0f;
+	mouse.y = screen.height / 2.0f;
+	g_cursor_position.x = mouse.x;
+	g_cursor_position.y = mouse.y;
 
 	// Tell GLFW to capture mouse movements and don't draw the cursor.
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
