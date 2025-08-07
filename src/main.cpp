@@ -556,6 +556,19 @@ int main()
 
 				f32 frame_time = renderer_frame_time_delta();
 
+				static const char *g_render_outputs[] = { "Final Color", "Position", "Normal", "Diffuse & Specular" };
+				static int g_selected_render_output = 0;
+				if ( ImGui::Combo( "Render Output", &g_selected_render_output, g_render_outputs, ARRAY_SIZE( g_render_outputs ) ) ) {
+					Renderer_Output_Channel output_channel = RendererOutputChannel_FinalColor;
+					switch ( g_selected_render_output ) {
+						case 0: output_channel = RendererOutputChannel_FinalColor; break;
+						case 1: output_channel = RendererOutputChannel_Position; break;
+						case 2: output_channel = RendererOutputChannel_Normal; break;
+						case 3: output_channel = RendererOutputChannel_DiffuseSpecular; break;
+					};
+					renderer_set_output_channel( output_channel );
+				}
+
 				ImGui::Text("GPU Vendor: " StringViewFormat, StringViewArgument( renderer_device_vendor() ));
 				ImGui::Text("GPU Name: " StringViewFormat, StringViewArgument( renderer_device_name() ));
 				ImGui::Text("ImGui: Frametime: %.3f ms/frame (%.1f FPS)", 1000.0f / imgui_io.Framerate, imgui_io.Framerate);
