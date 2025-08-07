@@ -127,33 +127,43 @@ struct Renderer_Pipeline {
 	GLuint opengl_pipeline;
 };
 
-enum Renderer_Framebuffer_Attachment : u16 {
-	RendererFramebufferAttachment_Color0 = 0,
-	RendererFramebufferAttachment_Color1,
-	RendererFramebufferAttachment_Color2,
-	RendererFramebufferAttachment_Color3,
-	RendererFramebufferAttachment_Color4,
-	RendererFramebufferAttachment_Color5,
-	RendererFramebufferAttachment_Color6,
-	RendererFramebufferAttachment_Color7,
-	RendererFramebufferAttachment_Color8,
-	RendererFramebufferAttachment_Color9,
-	RendererFramebufferAttachment_Color10,
-	RendererFramebufferAttachment_Color11,
-	RendererFramebufferAttachment_Color12,
-	RendererFramebufferAttachment_Color13,
-	RendererFramebufferAttachment_Color14,
-	RendererFramebufferAttachment_Color15,
+enum Renderer_Framebuffer_Attachment_Point : u8 {
+	RendererFramebufferAttachmentPoint_Color0 = 0,
+	RendererFramebufferAttachmentPoint_Color1,
+	RendererFramebufferAttachmentPoint_Color2,
+	RendererFramebufferAttachmentPoint_Color3,
+	RendererFramebufferAttachmentPoint_Color4,
+	RendererFramebufferAttachmentPoint_Color5,
+	RendererFramebufferAttachmentPoint_Color6,
+	RendererFramebufferAttachmentPoint_Color7,
+	RendererFramebufferAttachmentPoint_Color8,
+	RendererFramebufferAttachmentPoint_Color9,
+	RendererFramebufferAttachmentPoint_Color10,
+	RendererFramebufferAttachmentPoint_Color11,
+	RendererFramebufferAttachmentPoint_Color12,
+	RendererFramebufferAttachmentPoint_Color13,
+	RendererFramebufferAttachmentPoint_Color14,
+	RendererFramebufferAttachmentPoint_Color15,
 
-	RendererFramebufferAttachment_Depth,
-	RendererFramebufferAttachment_Stencil,
-	RendererFramebufferAttachment_DepthStencil,
+	RendererFramebufferAttachmentPoint_Depth,
+	RendererFramebufferAttachmentPoint_Stencil,
+	RendererFramebufferAttachmentPoint_DepthStencil,
 
-	RendererFramebufferAttachment_None = U16_MAX
+	RendererFramebufferAttachmentPoint_None = U8_MAX
 };
 
+enum Renderer_Framebuffer_Attachment_Bit : u8 {
+	RendererFramebufferAttachmentBit_IsRenderbuffer = ( 1 << 0 ),
+	RendererFramebufferAttachmentBit_IsActive = ( 1 << 1 )
+};
+typedef u8 Renderer_Framebuffer_Attachment_Bits;
+
+struct Renderer_Framebuffer_Attachment;
 struct Renderer_Framebuffer {
 	StringView_ASCII name;
+	Array< Renderer_Framebuffer_Attachment > attachments;
+
+	// OpenGL-specific:
 	GLuint opengl_framebuffer;
 };
 typedef u8 Renderer_Framebuffer_ID;
@@ -161,7 +171,9 @@ constexpr Renderer_Framebuffer_ID INVALID_FRAMEBUFFER_ID = U8_MAX;
 
 struct Renderer_Renderbuffer {
 	StringView_ASCII name;
-	Renderer_Framebuffer_Attachment attachment;
+	Renderer_Framebuffer_Attachment_Point attachment_point;
+
+	// OpenGL-specific:
 	GLuint opengl_renderbuffer;
 	// Stored in OpenGL (glGetRenderbufferParameter):
 	// width
@@ -170,8 +182,17 @@ struct Renderer_Renderbuffer {
 	// samples
 	// R G B A | D S component sizes
 };
-typedef u16 Renderer_Renderbuffer_ID;
-constexpr Renderer_Renderbuffer_ID INVALID_RENDERBUFFER_ID = U16_MAX;
+typedef u8 Renderer_Renderbuffer_ID;
+constexpr Renderer_Renderbuffer_ID INVALID_RENDERBUFFER_ID = U8_MAX;
+
+struct Renderer_Framebuffer_Attachment {
+	Renderer_Framebuffer_Attachment_Point attachment_point;
+	Renderer_Framebuffer_Attachment_Bits bits;
+	union {
+		Texture_ID _texture_id;
+		Renderer_Renderbuffer_ID _renderbuffer_id;
+	};
+};
 
 struct Renderer_Render_Command {
 	Mesh_ID mesh_id;
@@ -237,7 +258,7 @@ renderer_create_renderbuffer(
 	StringView_ASCII name,
 	u32 width,
 	u32 height,
-	Renderer_Framebuffer_Attachment attachment,
+	Renderer_Framebuffer_Attachment_Point attachment_point,
 	GLenum opengl_internal_format
 );
 
@@ -257,16 +278,16 @@ Renderer_Framebuffer *
 renderer_framebuffer_instance( Renderer_Framebuffer_ID framebuffer_id );
 
 bool
-renderer_attach_renderbuffer_to_framebuffer( Renderer_Framebuffer_ID framebuffer_id, Renderer_Renderbuffer_ID renderbuffer_id );
+renderer_renderbuffer_attach_to_framebuffer( Renderer_Framebuffer_ID framebuffer_id, Renderer_Renderbuffer_ID renderbuffer_id, Renderer_Framebuffer_Attachment_Point attachment_point );
 
 GLenum
-renderer_framebuffer_attachment_to_opengl( Renderer_Framebuffer_Attachment attachment );
+renderer_framebuffer_attachment_point_to_opengl( Renderer_Framebuffer_Attachment_Point attachment_point );
 
 bool
 renderer_is_framebuffer_complete( Renderer_Framebuffer_ID framebuffer_id );
 
 void
-renderer_set_active_framebuffer_color_attachments( Renderer_Framebuffer_ID framebuffer_id, ArrayView< Renderer_Framebuffer_Attachment > color_attachments );
+renderer_set_active_framebuffer_color_attachment_points( Renderer_Framebuffer_ID framebuffer_id, ArrayView< Renderer_Framebuffer_Attachment_Point > attachment_points );
 
 void
 renderer_draw_frame();
@@ -289,11 +310,11 @@ renderer_set_view_matrix_pointer( Matrix4x4_f32 *view );
 void
 renderer_set_projection_matrix_pointer( Matrix4x4_f32 *projection );
 
-Renderer_Framebuffer_Attachment
-renderer_texture_format_to_framebuffer_attachment( Texture_Format format );
+Renderer_Framebuffer_Attachment_Point
+renderer_texture_format_to_framebuffer_attachment_point( Texture_Format format );
 
 bool
-renderer_texture_attach_to_framebuffer( Texture_ID texture_id, Renderer_Framebuffer_ID framebuffer_id, Renderer_Framebuffer_Attachment attachment );
+renderer_texture_attach_to_framebuffer( Texture_ID texture_id, Renderer_Framebuffer_ID framebuffer_id, Renderer_Framebuffer_Attachment_Point attachment_point );
 
 bool
 renderer_texture_upload( Texture_ID texture_id );
@@ -344,7 +365,7 @@ void
 renderer_set_ambient_light_color( Vector3_f32 ambient_light );
 
 StringView_ASCII
-renderer_framebuffer_attachment_name( Renderer_Framebuffer_Attachment attachment );
+renderer_framebuffer_attachment_point_name( Renderer_Framebuffer_Attachment_Point attachment_point );
 
 f32
 renderer_frame_time_delta();

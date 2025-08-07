@@ -10,6 +10,8 @@ constexpr u64 RENDERER_INITIAL_STAGES_CAPACITY = 8;
 constexpr u64 RENDERER_INITIAL_FRAMEBUFFERS_CAPACITY = 2;
 constexpr u64 RENDERER_INITIAL_RENDERBUFFERS_CAPACITY = 2;
 
+constexpr u64 RENDERER_INITIAL_FRAMEBUFFER_ATTACHMENTS_CAPACITY = 8;
+
 constexpr u64 RENDERER_OPENGL_ERROR_LOG_CAPACITY = 4096;
 constexpr u64 RENDERER_OPENGL_INFO_LOG_CAPACITY = 4096;
 
@@ -430,7 +432,7 @@ setup_geometry_buffer( u16 framebuffer_width, u16 framebuffer_height ) {
 	renderer_texture_attach_to_framebuffer(
 		g_renderer.gbuffer.texture_position,
 		g_renderer.gbuffer.framebuffer,
-		RendererFramebufferAttachment_Color0
+		RendererFramebufferAttachmentPoint_Color0
 	);
 
 	g_renderer.gbuffer.texture_normal = texture_create(
@@ -445,7 +447,7 @@ setup_geometry_buffer( u16 framebuffer_width, u16 framebuffer_height ) {
 	renderer_texture_attach_to_framebuffer(
 		g_renderer.gbuffer.texture_normal,
 		g_renderer.gbuffer.framebuffer,
-		RendererFramebufferAttachment_Color1
+		RendererFramebufferAttachmentPoint_Color1
 	);
 
 	g_renderer.gbuffer.texture_color_specular = texture_create(
@@ -460,31 +462,35 @@ setup_geometry_buffer( u16 framebuffer_width, u16 framebuffer_height ) {
 	renderer_texture_attach_to_framebuffer(
 		g_renderer.gbuffer.texture_color_specular,
 		g_renderer.gbuffer.framebuffer,
-		RendererFramebufferAttachment_Color2
+		RendererFramebufferAttachmentPoint_Color2
 	);
 
-	Renderer_Framebuffer_Attachment active_attachments[] = {
-		RendererFramebufferAttachment_Color0,  // position
-		RendererFramebufferAttachment_Color1,  // normal
-		RendererFramebufferAttachment_Color2   // color + specular
+	Renderer_Framebuffer_Attachment_Point active_attachment_points[] = {
+		RendererFramebufferAttachmentPoint_Color0,  // position
+		RendererFramebufferAttachmentPoint_Color1,  // normal
+		RendererFramebufferAttachmentPoint_Color2   // color + specular
 	};
-	u32 active_attachments_size = ARRAY_SIZE( active_attachments );
+	u32 active_attachment_points_size = ARRAY_SIZE( active_attachment_points );
 
-	renderer_set_active_framebuffer_color_attachments(
+	renderer_set_active_framebuffer_color_attachment_points(
 		g_renderer.gbuffer.framebuffer,
-		ArrayView< Renderer_Framebuffer_Attachment > { .size = active_attachments_size, .data = active_attachments }
+		ArrayView< Renderer_Framebuffer_Attachment_Point > {
+			.size = active_attachment_points_size,
+			.data = active_attachment_points
+		}
 	);
 
 	g_renderer.gbuffer.renderbuffer_depth_stencil = renderer_create_renderbuffer(
 		"gbuffer_depth_stencil",
 		framebuffer_width,
 		framebuffer_height,
-		RendererFramebufferAttachment_DepthStencil,
+		RendererFramebufferAttachmentPoint_DepthStencil,
 		GL_DEPTH24_STENCIL8
 	);
-	renderer_attach_renderbuffer_to_framebuffer(
+	renderer_renderbuffer_attach_to_framebuffer(
 		g_renderer.gbuffer.framebuffer,
-		g_renderer.gbuffer.renderbuffer_depth_stencil
+		g_renderer.gbuffer.renderbuffer_depth_stencil,
+		RendererFramebufferAttachmentPoint_DepthStencil
 	);
 	log_debug( "Geometry Buffer has been set up." );
 }
@@ -1049,12 +1055,12 @@ renderer_create_renderbuffer(
 	StringView_ASCII name,
 	u32 width,
 	u32 height,
-	Renderer_Framebuffer_Attachment attachment,
+	Renderer_Framebuffer_Attachment_Point attachment_point,
 	GLenum opengl_internal_format
 ) {
 	Renderer_Renderbuffer renderbuffer = {
 		.name = name,
-		.attachment = attachment
+		.attachment_point = attachment_point
 		// .opengl_renderbuffer
 	};
 
@@ -1073,14 +1079,14 @@ renderer_create_renderbuffer(
 	);
 
 	u32 renderbuffer_idx = array_add( &g_renderer.renderbuffers, renderbuffer );
-	StringView_ASCII attachment_name = renderer_framebuffer_attachment_name( renderbuffer.attachment );
+	StringView_ASCII attachment_point_name = renderer_framebuffer_attachment_point_name( renderbuffer.attachment_point );
 	StringView_ASCII format_name = opengl_internal_texture_format_name( opengl_internal_format );
 	log_info( "Created Renderbuffer '" StringViewFormat "' (#%u, %ux%u, " StringViewFormat ", " StringViewFormat ").",
 		StringViewArgument( renderbuffer.name ),
 		renderbuffer_idx,
 		width,
 		height,
-		StringViewArgument( attachment_name ),
+		StringViewArgument( attachment_point_name ),
 		StringViewArgument( format_name )
 	);
 	return renderbuffer_idx;
@@ -1109,6 +1115,7 @@ Renderer_Framebuffer_ID
 renderer_create_framebuffer( StringView_ASCII name ) {
 	Renderer_Framebuffer framebuffer = {
 		.name = name,
+		.attachments = array_new< Renderer_Framebuffer_Attachment >( sys_allocator, RENDERER_INITIAL_FRAMEBUFFER_ATTACHMENTS_CAPACITY )
 		// .opengl_framebuffer
 	};
 
@@ -1146,11 +1153,11 @@ renderer_framebuffer_instance( Renderer_Framebuffer_ID framebuffer_id ) {
 }
 
 bool
-renderer_attach_renderbuffer_to_framebuffer( Renderer_Framebuffer_ID framebuffer_id, Renderer_Renderbuffer_ID renderbuffer_id ) {
+renderer_renderbuffer_attach_to_framebuffer( Renderer_Framebuffer_ID framebuffer_id, Renderer_Renderbuffer_ID renderbuffer_id, Renderer_Framebuffer_Attachment_Point attachment_point ) {
 	Renderer_Framebuffer *framebuffer = renderer_framebuffer_instance( framebuffer_id );
 	Renderer_Renderbuffer *renderbuffer = renderer_renderbuffer_instance( renderbuffer_id );
 
-	GLenum opengl_framebuffer_attachment = renderer_framebuffer_attachment_to_opengl( renderbuffer->attachment );
+	GLenum opengl_framebuffer_attachment = renderer_framebuffer_attachment_point_to_opengl( attachment_point );
 	Assert( opengl_framebuffer_attachment != GL_INVALID_ENUM );
 	if ( opengl_framebuffer_attachment == GL_INVALID_ENUM )
 		return false;
@@ -1163,44 +1170,59 @@ renderer_attach_renderbuffer_to_framebuffer( Renderer_Framebuffer_ID framebuffer
 		/*       renderbuffer */ renderbuffer->opengl_renderbuffer
 	);
 
-	StringView_ASCII attachment_name = renderer_framebuffer_attachment_name( renderbuffer->attachment );
+	Renderer_Framebuffer_Attachment attachment = {
+		.attachment_point = attachment_point,
+		.bits = RendererFramebufferAttachmentBit_IsRenderbuffer,
+	};
+	attachment._renderbuffer_id = renderbuffer_id;
+	// If it is a Depth or Stencil or DepthStencil attachment, mark it as active.
+	// (There is no way to change it in OpenGL, so it always stays active, I guess?)
+	if ( attachment_point == RendererFramebufferAttachmentPoint_Depth ||
+		attachment_point == RendererFramebufferAttachmentPoint_Stencil ||
+		attachment_point == RendererFramebufferAttachmentPoint_DepthStencil
+	) {
+		attachment.bits |= RendererFramebufferAttachmentBit_IsActive;
+	}
+	array_add( &framebuffer->attachments, attachment );
+
+	StringView_ASCII attachment_point_name = renderer_framebuffer_attachment_point_name( renderbuffer->attachment_point );
 	log_debug(
 		"Attached Renderbuffer '" StringViewFormat "' (#%u) to Framebuffer '" StringViewFormat "' (#%u) at " StringViewFormat ".",
 		StringViewArgument( renderbuffer->name ),
 		renderbuffer_id,
 		StringViewArgument( framebuffer->name ),
 		framebuffer_id,
-		StringViewArgument( attachment_name )
+		StringViewArgument( attachment_point_name )
 	);
 	return true;
 }
 
 GLenum
-renderer_framebuffer_attachment_to_opengl( Renderer_Framebuffer_Attachment attachment ) {
-	switch ( attachment ) {
-		case RendererFramebufferAttachment_Color0:        return GL_COLOR_ATTACHMENT0;
-		case RendererFramebufferAttachment_Color1:        return GL_COLOR_ATTACHMENT1;
-		case RendererFramebufferAttachment_Color2:        return GL_COLOR_ATTACHMENT2;
-		case RendererFramebufferAttachment_Color3:        return GL_COLOR_ATTACHMENT3;
-		case RendererFramebufferAttachment_Color4:        return GL_COLOR_ATTACHMENT4;
-		case RendererFramebufferAttachment_Color5:        return GL_COLOR_ATTACHMENT5;
-		case RendererFramebufferAttachment_Color6:        return GL_COLOR_ATTACHMENT6;
-		case RendererFramebufferAttachment_Color7:        return GL_COLOR_ATTACHMENT7;
-		case RendererFramebufferAttachment_Color8:        return GL_COLOR_ATTACHMENT8;
-		case RendererFramebufferAttachment_Color9:        return GL_COLOR_ATTACHMENT9;
-		case RendererFramebufferAttachment_Color10:       return GL_COLOR_ATTACHMENT10;
-		case RendererFramebufferAttachment_Color11:       return GL_COLOR_ATTACHMENT11;
-		case RendererFramebufferAttachment_Color12:       return GL_COLOR_ATTACHMENT12;
-		case RendererFramebufferAttachment_Color13:       return GL_COLOR_ATTACHMENT13;
-		case RendererFramebufferAttachment_Color14:       return GL_COLOR_ATTACHMENT14;
-		case RendererFramebufferAttachment_Color15:       return GL_COLOR_ATTACHMENT15;
+renderer_framebuffer_attachment_point_to_opengl( Renderer_Framebuffer_Attachment_Point attachment_point ) {
+	switch ( attachment_point ) {
+		case RendererFramebufferAttachmentPoint_Color0:        return GL_COLOR_ATTACHMENT0;
+		case RendererFramebufferAttachmentPoint_Color1:        return GL_COLOR_ATTACHMENT1;
+		case RendererFramebufferAttachmentPoint_Color2:        return GL_COLOR_ATTACHMENT2;
+		case RendererFramebufferAttachmentPoint_Color3:        return GL_COLOR_ATTACHMENT3;
+		case RendererFramebufferAttachmentPoint_Color4:        return GL_COLOR_ATTACHMENT4;
+		case RendererFramebufferAttachmentPoint_Color5:        return GL_COLOR_ATTACHMENT5;
+		case RendererFramebufferAttachmentPoint_Color6:        return GL_COLOR_ATTACHMENT6;
+		case RendererFramebufferAttachmentPoint_Color7:        return GL_COLOR_ATTACHMENT7;
+		case RendererFramebufferAttachmentPoint_Color8:        return GL_COLOR_ATTACHMENT8;
+		case RendererFramebufferAttachmentPoint_Color9:        return GL_COLOR_ATTACHMENT9;
+		case RendererFramebufferAttachmentPoint_Color10:       return GL_COLOR_ATTACHMENT10;
+		case RendererFramebufferAttachmentPoint_Color11:       return GL_COLOR_ATTACHMENT11;
+		case RendererFramebufferAttachmentPoint_Color12:       return GL_COLOR_ATTACHMENT12;
+		case RendererFramebufferAttachmentPoint_Color13:       return GL_COLOR_ATTACHMENT13;
+		case RendererFramebufferAttachmentPoint_Color14:       return GL_COLOR_ATTACHMENT14;
+		case RendererFramebufferAttachmentPoint_Color15:       return GL_COLOR_ATTACHMENT15;
 
-		case RendererFramebufferAttachment_Depth:         return GL_DEPTH_ATTACHMENT;
-		case RendererFramebufferAttachment_Stencil:       return GL_STENCIL_ATTACHMENT;
-		case RendererFramebufferAttachment_DepthStencil:  return GL_DEPTH_STENCIL_ATTACHMENT;
+		case RendererFramebufferAttachmentPoint_Depth:         return GL_DEPTH_ATTACHMENT;
+		case RendererFramebufferAttachmentPoint_Stencil:       return GL_STENCIL_ATTACHMENT;
+		case RendererFramebufferAttachmentPoint_DepthStencil:  return GL_DEPTH_STENCIL_ATTACHMENT;
 
 
-		case RendererFramebufferAttachment_None:
+		case RendererFramebufferAttachmentPoint_None:
 		default:                                          return GL_INVALID_ENUM;
 	}
 }
@@ -1214,25 +1236,43 @@ renderer_is_framebuffer_complete( Renderer_Framebuffer_ID framebuffer_id ) {
 }
 
 void
-renderer_set_active_framebuffer_color_attachments( Renderer_Framebuffer_ID framebuffer_id, ArrayView< Renderer_Framebuffer_Attachment > color_attachments ) {
-	if ( color_attachments.size > g_renderer.opengl_max_color_attachments ) {
-		Assert( color_attachments.size > g_renderer.opengl_max_color_attachments );
+renderer_set_active_framebuffer_color_attachment_points( Renderer_Framebuffer_ID framebuffer_id, ArrayView< Renderer_Framebuffer_Attachment_Point > color_attachment_points ) {
+	if ( color_attachment_points.size > g_renderer.opengl_max_color_attachments ) {
+		Assert( color_attachment_points.size > g_renderer.opengl_max_color_attachments );
 		return;
 	}
 
 	Renderer_Framebuffer *framebuffer = renderer_framebuffer_instance( framebuffer_id );
 
 	// Can we do it nicely without memory allocation?
-	Array< GLenum > opengl_color_attachments = array_new< GLenum >( sys_allocator, color_attachments.size );
+	Array< GLenum > opengl_color_attachments = array_new< GLenum >( sys_allocator, color_attachment_points.size );
 	// GLenum opengl_color_attachments[ GL_MAX_COLOR_ATTACHMENTS ];
 
-	for ( u32 attachment_idx = 0; attachment_idx < color_attachments.size; attachment_idx += 1 ) {
-		Renderer_Framebuffer_Attachment attachment = color_attachments.data[ attachment_idx ];
+	// Mark all color attachments as not active (depth/stencil is always active).
+	for ( u32 attachment_idx = 0; attachment_idx < framebuffer->attachments.size; attachment_idx += 1 ) {
+		Renderer_Framebuffer_Attachment *attachment = &framebuffer->attachments.data[ attachment_idx ];
+		if ( attachment->attachment_point >= RendererFramebufferAttachmentPoint_Color0 &&
+			attachment->attachment_point <= g_renderer.opengl_max_color_attachments ) {
+			// Color attachment, set as not active.
+			attachment->bits &= ~RendererFramebufferAttachmentBit_IsActive;
+		}
+	}
+
+	for ( u32 color_attachment_idx = 0; color_attachment_idx < color_attachment_points.size; color_attachment_idx += 1 ) {
+		Renderer_Framebuffer_Attachment_Point attachment_point = color_attachment_points.data[ color_attachment_idx ];
+		// Mark attachment with this color attachment point as active.
+		for ( u32 attachment_idx = 0; attachment_idx < framebuffer->attachments.size; attachment_idx += 1 ) {
+			Renderer_Framebuffer_Attachment *attachment = &framebuffer->attachments.data[ attachment_idx ];
+			if ( attachment->attachment_point == attachment_point ) {
+				attachment->bits |= RendererFramebufferAttachmentBit_IsActive;
+				break;
+			}
+		}
 
 		// Check whether there are non-color attachments.
-		Assert( attachment >= RendererFramebufferAttachment_Color0 && attachment <= g_renderer.opengl_max_color_attachments );
+		Assert( attachment_point >= RendererFramebufferAttachmentPoint_Color0 && attachment_point <= g_renderer.opengl_max_color_attachments );
 
-		GLenum opengl_color_attachment = renderer_framebuffer_attachment_to_opengl( attachment );
+		GLenum opengl_color_attachment = renderer_framebuffer_attachment_point_to_opengl( attachment_point );
 		// opengl_color_attachments[ attachment_idx ] = opengl_color_attachment;
 		array_add( &opengl_color_attachments, opengl_color_attachment );
 	}
@@ -1618,43 +1658,42 @@ renderer_set_projection_matrix_pointer( Matrix4x4_f32 *projection ) {
 	g_renderer.projection_matrix = projection;
 }
 
-Renderer_Framebuffer_Attachment
-renderer_texture_format_to_framebuffer_attachment( Texture_Format format ) {
+Renderer_Framebuffer_Attachment_Point
+renderer_texture_format_to_framebuffer_attachment_point( Texture_Format format ) {
 	switch ( format ) {
 		case TextureFormat_Red:
 		case TextureFormat_RG:
 		case TextureFormat_RGB:
-		case TextureFormat_RGBA:          return RendererFramebufferAttachment_Color0;
+		case TextureFormat_RGBA:          return RendererFramebufferAttachmentPoint_Color0;
 
-		case TextureFormat_Depth:         return RendererFramebufferAttachment_Depth;
-		case TextureFormat_Stencil:       return RendererFramebufferAttachment_Stencil;
-		case TextureFormat_DepthStencil:  return RendererFramebufferAttachment_DepthStencil;
+		case TextureFormat_Depth:         return RendererFramebufferAttachmentPoint_Depth;
+		case TextureFormat_Stencil:       return RendererFramebufferAttachmentPoint_Stencil;
+		case TextureFormat_DepthStencil:  return RendererFramebufferAttachmentPoint_DepthStencil;
 
 		case TextureFormat_Unknown:
-		default:                          return RendererFramebufferAttachment_None;
+		default:                          return RendererFramebufferAttachmentPoint_None;
 	}
 }
 
 bool
-renderer_texture_attach_to_framebuffer( Texture_ID texture_id, Renderer_Framebuffer_ID framebuffer_id, Renderer_Framebuffer_Attachment attachment ) {
+renderer_texture_attach_to_framebuffer( Texture_ID texture_id, Renderer_Framebuffer_ID framebuffer_id, Renderer_Framebuffer_Attachment_Point attachment_point ) {
 	Texture *texture = texture_instance( texture_id );
 	Renderer_Framebuffer *framebuffer = renderer_framebuffer_instance( framebuffer_id );
-	Renderer_Framebuffer_Attachment expected_attachment = renderer_texture_format_to_framebuffer_attachment( texture->format );
-	if ( expected_attachment == RendererFramebufferAttachment_Color0 ) {
-		// Color attachment
-
-		Assert( attachment >= RendererFramebufferAttachment_Color0 && attachment <= g_renderer.opengl_max_color_attachments - 1 );
-		if ( attachment < RendererFramebufferAttachment_Color0 && attachment > g_renderer.opengl_max_color_attachments - 1 )
+	Renderer_Framebuffer_Attachment_Point expected_attachment_point = renderer_texture_format_to_framebuffer_attachment_point( texture->format );
+	if ( expected_attachment_point == RendererFramebufferAttachmentPoint_Color0 ) {
+		// This is a Color attachment.
+		Assert( attachment_point >= RendererFramebufferAttachmentPoint_Color0 && attachment_point <= g_renderer.opengl_max_color_attachments - 1 );
+		if ( attachment_point < RendererFramebufferAttachmentPoint_Color0 && attachment_point > g_renderer.opengl_max_color_attachments - 1 )
 			return false;
 	} else {
-		// Depth / Stencil / DepthStencil attachment
-		// Those are mapped one-to-one
-		Assert( attachment == expected_attachment );
-		if ( attachment != expected_attachment )
+		// This is a Depth / Stencil / DepthStencil attachment.
+		// Those are mapped one-to-one.
+		Assert( attachment_point == expected_attachment_point );
+		if ( attachment_point != expected_attachment_point )
 			return false;
 	}
 
-	GLenum opengl_framebuffer_attachment = renderer_framebuffer_attachment_to_opengl( attachment );
+	GLenum opengl_framebuffer_attachment = renderer_framebuffer_attachment_point_to_opengl( attachment_point );
 	glNamedFramebufferTexture(
 		/* framebuffer */ framebuffer->opengl_framebuffer,
 		/*  attachment */ opengl_framebuffer_attachment,
@@ -1662,16 +1701,29 @@ renderer_texture_attach_to_framebuffer( Texture_ID texture_id, Renderer_Framebuf
 		/*       level */ 0  // mipmap
 	);
 
-	// keep track of attachments?
+	Renderer_Framebuffer_Attachment attachment = {
+		.attachment_point = attachment_point,
+		.bits = 0
+	};
+	// If it is a Depth or Stencil or DepthStencil attachment, mark it as active.
+	// (There is no way to change it in OpenGL, so it always stays active, I guess?)
+	if ( attachment_point == RendererFramebufferAttachmentPoint_Depth ||
+		attachment_point == RendererFramebufferAttachmentPoint_Stencil ||
+		attachment_point == RendererFramebufferAttachmentPoint_DepthStencil
+	) {
+		attachment.bits |= RendererFramebufferAttachmentBit_IsActive;
+	}
+	attachment._texture_id = texture_id;
+	array_add( &framebuffer->attachments, attachment );
 
-	StringView_ASCII attachment_name = renderer_framebuffer_attachment_name( attachment );
+	StringView_ASCII attachment_point_name = renderer_framebuffer_attachment_point_name( attachment_point );
 	log_debug(
 		"Attached Texture '" StringViewFormat "' (#%u) to Framebuffer '" StringViewFormat "' (#%u) at " StringViewFormat ".",
 		StringViewArgument( texture->name ),
 		texture_id,
 		StringViewArgument( framebuffer->name ),
 		framebuffer_id,
-		StringViewArgument( attachment_name )
+		StringViewArgument( attachment_point_name )
 	);
 	return true;
 }
@@ -1897,30 +1949,30 @@ renderer_set_ambient_light_color( Vector3_f32 ambient_light ) {
 }
 
 StringView_ASCII
-renderer_framebuffer_attachment_name( Renderer_Framebuffer_Attachment attachment ) {
-	switch ( attachment ) {
-		case RendererFramebufferAttachment_Color0: return "Color0";
-		case RendererFramebufferAttachment_Color1: return "Color1";
-		case RendererFramebufferAttachment_Color2: return "Color2";
-		case RendererFramebufferAttachment_Color3: return "Color3";
-		case RendererFramebufferAttachment_Color4: return "Color4";
-		case RendererFramebufferAttachment_Color5: return "Color5";
-		case RendererFramebufferAttachment_Color6: return "Color6";
-		case RendererFramebufferAttachment_Color7: return "Color7";
-		case RendererFramebufferAttachment_Color8: return "Color8";
-		case RendererFramebufferAttachment_Color9: return "Color9";
-		case RendererFramebufferAttachment_Color10: return "Color10";
-		case RendererFramebufferAttachment_Color11: return "Color11";
-		case RendererFramebufferAttachment_Color12: return "Color12";
-		case RendererFramebufferAttachment_Color13: return "Color13";
-		case RendererFramebufferAttachment_Color14: return "Color14";
-		case RendererFramebufferAttachment_Color15: return "Color15";
+renderer_framebuffer_attachment_point_name( Renderer_Framebuffer_Attachment_Point attachment_point ) {
+	switch ( attachment_point ) {
+		case RendererFramebufferAttachmentPoint_Color0: return "Color0";
+		case RendererFramebufferAttachmentPoint_Color1: return "Color1";
+		case RendererFramebufferAttachmentPoint_Color2: return "Color2";
+		case RendererFramebufferAttachmentPoint_Color3: return "Color3";
+		case RendererFramebufferAttachmentPoint_Color4: return "Color4";
+		case RendererFramebufferAttachmentPoint_Color5: return "Color5";
+		case RendererFramebufferAttachmentPoint_Color6: return "Color6";
+		case RendererFramebufferAttachmentPoint_Color7: return "Color7";
+		case RendererFramebufferAttachmentPoint_Color8: return "Color8";
+		case RendererFramebufferAttachmentPoint_Color9: return "Color9";
+		case RendererFramebufferAttachmentPoint_Color10: return "Color10";
+		case RendererFramebufferAttachmentPoint_Color11: return "Color11";
+		case RendererFramebufferAttachmentPoint_Color12: return "Color12";
+		case RendererFramebufferAttachmentPoint_Color13: return "Color13";
+		case RendererFramebufferAttachmentPoint_Color14: return "Color14";
+		case RendererFramebufferAttachmentPoint_Color15: return "Color15";
 
-		case RendererFramebufferAttachment_Depth: return "Depth";
-		case RendererFramebufferAttachment_Stencil: return "Stencil";
-		case RendererFramebufferAttachment_DepthStencil: return "DepthStencil";
+		case RendererFramebufferAttachmentPoint_Depth: return "Depth";
+		case RendererFramebufferAttachmentPoint_Stencil: return "Stencil";
+		case RendererFramebufferAttachmentPoint_DepthStencil: return "DepthStencil";
 
-		case RendererFramebufferAttachment_None:
+		case RendererFramebufferAttachmentPoint_None:
 		default:                                  return ( const char *)NULL;
 	}
 }
