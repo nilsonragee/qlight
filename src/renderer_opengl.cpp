@@ -60,6 +60,8 @@ struct G_Renderer {
 
 	Mesh_ID fullscreen_quad;
 
+	Renderer_Output_Channel output_channel;
+
 	// OpenGL-specific:
 	u32 opengl_max_color_attachments;
 	/*
@@ -639,6 +641,8 @@ renderer_init() {
 	constexpr u16 TEMP_WIDTH = 1280;
 	constexpr u16 TEMP_HEIGHT = 720;
 	setup_geometry_buffer( TEMP_WIDTH, TEMP_HEIGHT );
+
+	g_renderer.output_channel = RendererOutputChannel_FinalColor;
 
 	g_renderer.camera_position = NULL;
 	g_renderer.view_matrix = NULL;
@@ -1433,15 +1437,6 @@ draw_pass_geometry() {
 	}
 
 	Assert( command_idx == g_renderer.render_queue.size );
-
-	glBlitNamedFramebuffer(
-		/*           source */ geometry_framebuffer->opengl_framebuffer,
-		/*      destination */ 0,
-		/*      source rect */ 0, 0, 1280, 720,
-		/* destination rect */ 0, 0, screen.width, screen.height,
-		/*             mask */ GL_COLOR_BUFFER_BIT,
-		/*           filter */ GL_LINEAR
-	);
 }
 
 static void
@@ -1588,6 +1583,37 @@ renderer_draw_frame() {
 	g_renderer.frame_time.current = glfwGetTime();
 	g_renderer.frame_time.delta = ( g_renderer.frame_time.current - g_renderer.frame_time.last ) * 1000.0f; // sec -> ms
 	g_renderer.frame_time.last = g_renderer.frame_time.current;
+
+	Renderer_Framebuffer_Attachment_Point attachment_point = RendererFramebufferAttachmentPoint_None;
+	switch ( g_renderer.output_channel ) {
+		case RendererOutputChannel_Position:
+			attachment_point = RendererFramebufferAttachmentPoint_Color0;
+			break;
+		case RendererOutputChannel_Normal:
+			attachment_point = RendererFramebufferAttachmentPoint_Color1;
+			break;
+		case RendererOutputChannel_DiffuseSpecular:
+			attachment_point = RendererFramebufferAttachmentPoint_Color2;
+			break;
+
+		case RendererOutputChannel_FinalColor:
+		default:
+			break;
+	}
+
+	if ( attachment_point != RendererFramebufferAttachmentPoint_None ) {
+		Renderer_Framebuffer *geometry_framebuffer = renderer_framebuffer_instance( g_renderer.gbuffer.framebuffer );
+		GLenum opengl_attachment = renderer_framebuffer_attachment_point_to_opengl( attachment_point );
+		glNamedFramebufferReadBuffer( geometry_framebuffer->opengl_framebuffer, opengl_attachment );
+		glBlitNamedFramebuffer(
+			/*           source */ geometry_framebuffer->opengl_framebuffer,
+			/*      destination */ 0,
+			/*      source rect */ 0, 0, 1280, 720,
+			/* destination rect */ 0, 0, screen.width, screen.height,
+			/*             mask */ GL_COLOR_BUFFER_BIT,
+			/*           filter */ GL_LINEAR
+		);
+	}
 
 	array_clear( &g_renderer.render_queue );
 }
@@ -1980,4 +2006,9 @@ renderer_framebuffer_attachment_point_name( Renderer_Framebuffer_Attachment_Poin
 f32
 renderer_frame_time_delta() {
 	return g_renderer.frame_time.delta;
+}
+
+void
+renderer_set_output_channel( Renderer_Output_Channel channel ) {
+	g_renderer.output_channel = channel;
 }

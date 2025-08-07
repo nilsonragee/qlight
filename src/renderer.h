@@ -200,6 +200,13 @@ struct Renderer_Render_Command {
 	Transform *transform;
 };
 
+enum Renderer_Output_Channel : u8 {
+	RendererOutputChannel_FinalColor = 0,
+	RendererOutputChannel_Position,
+	RendererOutputChannel_Normal,
+	RendererOutputChannel_DiffuseSpecular
+};
+
 struct Vertex_3D {
 	Vector3_f32 position;
 	Vector3_f32 normal;
@@ -369,5 +376,8 @@ renderer_framebuffer_attachment_point_name( Renderer_Framebuffer_Attachment_Poin
 
 f32
 renderer_frame_time_delta();
+
+void
+renderer_set_output_channel( Renderer_Output_Channel channel );
 
 #endif /* QLIGHT_RENDERER_H */
