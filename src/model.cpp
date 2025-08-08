@@ -31,11 +31,10 @@ void models_shutdown() {
 }
 
 Model_ID model_find( StringView_ASCII name ) {
-	for ( u32 model_idx = 0; model_idx < g_models.models.size; model_idx += 1 ) {
-		Model *model = &g_models.models.data[ model_idx ];
-		if ( string_equals( name, model->name ) )
-			return model_idx;
-	}
+	ForIt( g_models.models.data, g_models.models.size ) {
+		if ( string_equals( name, it.name ) )
+			return it_index;
+	}}
 
 	return INVALID_MODEL_ID;
 }
@@ -50,11 +49,10 @@ Model * model_instance( Model_ID model_id ) {
 static u32
 vertex_attributes_size( ArrayView< Renderer_Vertex_Attribute > attributes ) {
 	u32 size = 0;
-	for ( u32 attribute_idx = 0; attribute_idx < attributes.size; attribute_idx += 1 ) {
-		Renderer_Vertex_Attribute *atr = &attributes.data[ attribute_idx ];
-		u32 atr_size = renderer_data_type_size( atr->data_type ) * atr->elements;
+	ForIt( attributes.data, attributes.size ) {
+		u32 atr_size = renderer_data_type_size( it.data_type ) * it.elements;
 		size += atr_size;
-	}
+	}}
 
 	return size;
 }
@@ -138,22 +136,22 @@ Model_ID model_load_from_file( StringView_ASCII name, StringView_ASCII file_path
 	// Combine vertex data from sparse arrays:
 	// from [XYZ, XYZ, XYZ...], [N, N, N...], [UV, UV, UV...], ...
 	// to   [XYZ, N, UV; XYZ, N, UV...]
-	for ( u32 vertex_idx = 0; vertex_idx < ai_mesh->mNumVertices; vertex_idx += 1 ) {
+	For( ai_mesh->mNumVertices ) {
 		Vector3_f32 position = {
-			.x = ai_mesh->mVertices[ vertex_idx ].x,
-			.y = ai_mesh->mVertices[ vertex_idx ].y,
-			.z = ai_mesh->mVertices[ vertex_idx ].z
+			.x = ai_mesh->mVertices[ it_index ].x,
+			.y = ai_mesh->mVertices[ it_index ].y,
+			.z = ai_mesh->mVertices[ it_index ].z
 		};
 
 		Vector3_f32 normal = {
-			.x = ai_mesh->mNormals[ vertex_idx ].x,
-			.y = ai_mesh->mNormals[ vertex_idx ].y,
-			.z = ai_mesh->mNormals[ vertex_idx ].z
+			.x = ai_mesh->mNormals[ it_index ].x,
+			.y = ai_mesh->mNormals[ it_index ].y,
+			.z = ai_mesh->mNormals[ it_index ].z
 		};
 
 		Vector2_f32 texture_uv = {
-			.x = ai_mesh->mTextureCoords[ 0 ][ vertex_idx ].x,
-			.y = ai_mesh->mTextureCoords[ 0 ][ vertex_idx ].y
+			.x = ai_mesh->mTextureCoords[ 0 ][ it_index ].x,
+			.y = ai_mesh->mTextureCoords[ 0 ][ it_index ].y
 			// .z = ai_mesh->mTextureCoords[ 0 ]->z
 		};
 
@@ -166,19 +164,17 @@ Model_ID model_load_from_file( StringView_ASCII name, StringView_ASCII file_path
 		carray_add( &mesh.vertices, &vertex );
 	}
 
-	aiFace *ai_face = NULL;
-	for ( u32 face_idx = 0; face_idx < ai_mesh->mNumFaces; face_idx += 1 ) {
-		ai_face = &ai_mesh->mFaces[ face_idx ];
-		AssertMessage( ai_face->mNumIndices == 3, "Non-triangle face in a mesh" );
+	ForIt( ai_mesh->mFaces, ai_mesh->mNumFaces ) {
+		AssertMessage( it.mNumIndices == 3, "Non-triangle face in a mesh" );
 
 		CArrayView face_indices = CArrayView {
-			.size = ai_face->mNumIndices,
+			.size = it.mNumIndices,
 			.item_size = sizeof( unsigned int ), // a.k.a. u32 - assimp index type's size
-			.data = ( u8 * )ai_face->mIndices
+			.data = ( u8 * )it.mIndices
 		};
 
 		add_appropriately_sized_mesh_indices( &mesh.indices, face_indices );
-	}
+	}}
 
 	Model model = {
 		.name = name,
@@ -208,11 +204,10 @@ Mesh_ID mesh_store( Mesh *mesh ) {
 }
 
 Mesh_ID mesh_find( StringView_ASCII name ) {
-	for ( u32 mesh_idx = 0; mesh_idx < g_models.meshes.size; mesh_idx += 1 ) {
-		Mesh *mesh = &g_models.meshes.data[ mesh_idx ];
-		if ( string_equals( name, string_view( &mesh->name ) ) )
-			return mesh_idx;
-	}
+	ForIt( g_models.meshes.data, g_models.meshes.size ) {
+		if ( string_equals( name, string_view( &it.name ) ) )
+			return it_index;
+	}}
 
 	return INVALID_MESH_ID;
 }

@@ -61,23 +61,22 @@ Map *map_load_from_file( StringView_ASCII name, StringView_ASCII file_path ) {
 }
 
 Map *map_load_by_name( StringView_ASCII name ) {
-	for ( u32 map_idx = 0; map_idx < g_maps.maps.size; map_idx += 1 ) {
-		Map *map = &g_maps.maps.data[ map_idx ];
-		if ( string_equals( name, map->name ) ) {
-			Assert( map->state == MapState_NotLoaded || map->state == MapState_Unloaded );
-			map->state = MapState_Loading;
+	ForIt( g_maps.maps.data, g_maps.maps.size ) {
+		if ( string_equals( name, it.name ) ) {
+			Assert( it.state == MapState_NotLoaded || it.state == MapState_Unloaded );
+			it.state = MapState_Loading;
 
 			// Loading logic
 			// ...
 
-			map->state = MapState_Loaded;
+			it.state = MapState_Loaded;
 
 			// Post-load logic
 			// ...
 
-			return map;
+			return &it;
 		}
-	}
+	}}
 
 	return NULL;
 }
@@ -88,11 +87,10 @@ bool map_change( StringView_ASCII name ) {
 		return true;
 	}
 
-	for ( u32 map_idx = 0; map_idx < g_maps.maps.size; map_idx += 1 ) {
-		Map *map = &g_maps.maps.data[ map_idx ];
-		if ( string_equals( name, map->name ) ) {
-			g_maps.changing_to = map;
-			if ( map->state != MapState_Loaded ) {
+	ForIt( g_maps.maps.data, g_maps.maps.size ) {
+		if ( string_equals( name, it.name ) ) {
+			g_maps.changing_to = &it;
+			if ( it.state != MapState_Loaded ) {
 				map_load_by_name( name );
 			}
 
@@ -100,11 +98,11 @@ bool map_change( StringView_ASCII name ) {
 			map_start( g_maps.changing_to );
 			map_unload( g_maps.current );
 
-			g_maps.current = map;
+			g_maps.current = &it;
 			g_maps.changing_to = NULL;
 			return true;
 		}
-	}
+	}}
 
 	return false;
 }

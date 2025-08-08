@@ -161,12 +161,10 @@ bool texture_destroy( Texture_ID texture_id ) {
 Texture_ID texture_find( StringView_ASCII name ) {
 	g_textures.searches += 1;
 
-	Texture *texture;
-	for ( u32 texture_idx = 0; texture_idx < g_textures.textures.size; texture_idx += 1 ) {
-		texture = &g_textures.textures.data[ texture_idx ];
-		if ( string_equals( texture->name, name ) )
-			return texture_idx;
-	}
+	ForIt( g_textures.textures.data, g_textures.textures.size ) {
+		if ( string_equals( name, it.name ) )
+			return it_index;
+	}}
 
 	return false;
 }

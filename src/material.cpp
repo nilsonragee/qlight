@@ -81,12 +81,10 @@ bool material_destroy( Material_ID material_id ) {
 Material_ID material_find( StringView_ASCII name ) {
 	g_materials.searches += 1;
 
-	Material *material;
-	for ( u32 material_idx = 0; material_idx < g_materials.materials.size; material_idx += 1 ) {
-		material = &g_materials.materials.data[ material_idx ];
-		if ( string_equals( material->name, name ) )
-			return material_idx;
-	}
+	ForIt( g_materials.materials.data, g_materials.materials.size ) {
+		if ( string_equals( name, it.name ) )
+			return it_index;
+	}}
 
 	return false;
 }

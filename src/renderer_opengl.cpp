@@ -681,22 +681,20 @@ opengl_preprocess_shader_stage( Renderer_Shader_Stage *stage ) {
 
 Renderer_Shader_Stage *
 renderer_find_shader_stage( StringView_ASCII name ) {
-	for ( u32 stage_idx = 0; stage_idx < g_renderer.stages.size; stage_idx += 1 ) {
-		Renderer_Shader_Stage *stage = &g_renderer.stages.data[ stage_idx ];
-		if ( string_equals( name, stage->name ) )
-			return stage;
-	}
+	ForIt( g_renderer.stages.data, g_renderer.stages.size ) {
+		if ( string_equals( name, it.name ) )
+			return &it;
+	}}
 
 	return NULL;
 }
 
 Renderer_Shader_Program *
 renderer_find_shader_program( StringView_ASCII name ) {
-	for ( u32 program_idx = 0; program_idx < g_renderer.programs.size; program_idx += 1 ) {
-		Renderer_Shader_Program *program = &g_renderer.programs.data[ program_idx ];
-		if ( string_equals( name, program->name ) )
-			return program;
-	}
+	ForIt( g_renderer.programs.data, g_renderer.programs.size ) {
+		if ( string_equals( name, it.name ) )
+			return &it;
+	}}
 
 	return NULL;
 }
@@ -851,16 +849,12 @@ renderer_create_and_compile_shader_program( StringView_ASCII name, ArrayView< Re
 	glObjectLabel( GL_PROGRAM, program.opengl_program, name.size, name.data );
 #endif
 
-	Renderer_Shader_Stage *stage;
-	// Here, `stage_idx` means index inside of shader stage array.
-	for ( u32 stage_idx = 0; stage_idx < shader_stages.size; stage_idx += 1 ) {
-		stage = shader_stages.data[ stage_idx ];
-
-		// Check whether this shader stage is already attached.
-		Renderer_Shader_Kind_Bits kind_bit = renderer_shader_kind_bit( stage->kind );
+	// Iterate over passes shader stages.
+	ForIt( shader_stages.data, shader_stages.size ) {
+		Renderer_Shader_Kind_Bits kind_bit = renderer_shader_kind_bit( it->kind );
 		if ( program.linked_shaders & kind_bit ) {
 			// Complain and skip.
-			StringView_ASCII shader_kind = renderer_shader_kind_name( stage->kind );
+			StringView_ASCII shader_kind = renderer_shader_kind_name( it->kind );
 			printf( "WARNING: Trying to attach " StringFormat " stage shader to \"" StringFormat "\" shader program, but it already has one. Skipping.\n",
 				StringArgumentValue( shader_kind ),
 				StringArgumentValue( name )
@@ -868,15 +862,15 @@ renderer_create_and_compile_shader_program( StringView_ASCII name, ArrayView< Re
 			continue;
 		}
 
-		stage->opengl_shader = opengl_compile_shader_stage( stage );
-		glAttachShader( program.opengl_program, stage->opengl_shader );
+		it->opengl_shader = opengl_compile_shader_stage( it );
+		glAttachShader( program.opengl_program, it->opengl_shader );
 #ifdef QLIGHT_DEBUG
-		glObjectLabel( GL_SHADER, stage->opengl_shader, stage->name.size, stage->name.data );
+		glObjectLabel( GL_SHADER, it->opengl_shader, it->name.size, it->name.data );
 #endif
 
-		program.shaders[ stage_idx ] = stage;
+		program.shaders[ it_index ] = it;
 		program.linked_shaders |= kind_bit;
-	}
+	}}
 
 	GLint opengl_result;
 
@@ -902,18 +896,18 @@ renderer_create_and_compile_shader_program( StringView_ASCII name, ArrayView< Re
 	}
 	Assert( opengl_result );
 
-	// Here, `stage_idx` means index inside of the shader program's array.
-	for ( u32 stage_idx = 0; stage_idx < RendererShaderKind_COUNT; stage_idx += 1 ) {
-		stage = program.shaders[ stage_idx ];
-		if ( !stage )
+	// Iterate over program's shaders.
+	// No `.data` because it is a flat C array, not Array/ArrayView struct.
+	ForIt( program.shaders, RendererShaderKind_COUNT ) {
+		if ( !it )
 			continue;
 
-		Renderer_Shader_Kind_Bits kind_bit = renderer_shader_kind_bit( stage->kind );
+		Renderer_Shader_Kind_Bits kind_bit = renderer_shader_kind_bit( it->kind );
 		if ( !( program.linked_shaders & kind_bit ) )
 			continue;
 
-		GL_CHECK( glDeleteShader( stage->opengl_shader ) );
-		glGetShaderiv( stage->opengl_shader, GL_DELETE_STATUS, &opengl_result );
+		GL_CHECK( glDeleteShader( it->opengl_shader ) );
+		glGetShaderiv( it->opengl_shader, GL_DELETE_STATUS, &opengl_result );
 		if ( opengl_result != GL_TRUE ) {
 			StringView_ASCII info_log = opengl_get_info_log( OpenGL_Program, program.opengl_program );
 
@@ -922,7 +916,7 @@ renderer_create_and_compile_shader_program( StringView_ASCII name, ArrayView< Re
 			printf( "OpenGL: \"" StringFormat "\"\n", StringArgumentValue( info_log ) );
 		}
 		Assert( opengl_result );
-	}
+	}}
 
 	u32 program_idx = array_add( &g_renderer.programs, program );
 	Renderer_Shader_Program * program_ptr = &g_renderer.programs.data[ program_idx ];
@@ -935,15 +929,13 @@ renderer_create_and_compile_shader_program( StringView_ASCII name, ArrayView< Re
 bool
 renderer_shader_program_set_uniform( Renderer_Shader_Program *program, StringView_ASCII uniform_name, Renderer_Data_Type data_type, void *value ) {
 	bool transpose = g_renderer.uniforms_transpose_matrix;
-	Renderer_Uniform *uniform;
-	for ( u32 uniform_idx = 0; uniform_idx < program->uniforms.size; uniform_idx += 1 ) {
-		uniform = &program->uniforms.data[ uniform_idx ];
-		if ( string_equals( uniform_name, uniform->name ) ) {
-			Assert( data_type == uniform->data_type );
-			if ( data_type != uniform->data_type )
+	ForIt( program->uniforms.data, program->uniforms.size ) {
+		if ( string_equals( uniform_name, it.name ) ) {
+			Assert( data_type == it.data_type );
+			if ( data_type != it.data_type )
 				return false;
 
-			GLuint location = uniform->opengl_location;
+			GLuint location = it.opengl_location;
 			switch ( data_type ) {
 				// Sampler2D ?
 				case RendererDataType_s32: glUniform1i( location, *( s32 *)value ); break;
@@ -958,7 +950,7 @@ renderer_shader_program_set_uniform( Renderer_Shader_Program *program, StringVie
 					AssertMessage( false, "Unsupported type" );
 			}
 		}
-	}
+	}}
 
 	return true; // @TODO: check for fails?
 }
@@ -966,15 +958,12 @@ renderer_shader_program_set_uniform( Renderer_Shader_Program *program, StringVie
 u32
 renderer_shader_program_update_uniform_locations( Renderer_Shader_Program *program ) {
 	u32 updated = 0;
-	const u32 uniform_count = program->uniforms.size;
-	Renderer_Uniform *uniform;
-	for ( u32 uniform_idx = 0; uniform_idx < uniform_count; uniform_idx += 1 ) {
-		uniform = &program->uniforms.data[ uniform_idx ];
+	ForIt( program->uniforms.data, program->uniforms.size ) {
 		// @Warning: uniform's name must be null-terminated!
 		// @TODO: Check for OpenGL errors
-		uniform->opengl_location = glGetUniformLocation( program->opengl_program, uniform->name.data );
+		it.opengl_location = glGetUniformLocation( program->opengl_program, it.name.data );
 		updated += 1;
-	}
+	}}
 
 	log_debug( "Updated %u uniform locations of '" StringViewFormat "' shader program.",
 		updated,
@@ -1098,11 +1087,10 @@ renderer_create_renderbuffer(
 
 Renderer_Renderbuffer_ID
 renderer_find_renderbuffer( StringView_ASCII name ) {
-	for ( u32 renderbuffer_idx = 0; renderbuffer_idx < g_renderer.renderbuffers.size; renderbuffer_idx += 1 ) {
-		Renderer_Renderbuffer *renderbuffer = &g_renderer.renderbuffers.data[ renderbuffer_idx ];
-		if ( string_equals( name, renderbuffer->name ) )
-			return renderbuffer_idx;
-	}
+	ForIt( g_renderer.renderbuffers.data, g_renderer.renderbuffers.size ) {
+		if ( string_equals( name, it.name ) )
+			return it_index;
+	}}
 
 	return INVALID_RENDERBUFFER_ID;
 }
@@ -1139,11 +1127,10 @@ renderer_create_framebuffer( StringView_ASCII name ) {
 
 Renderer_Framebuffer_ID
 renderer_find_framebuffer( StringView_ASCII name ) {
-	for ( u32 framebuffer_idx = 0; framebuffer_idx < g_renderer.framebuffers.size; framebuffer_idx += 1 ) {
-		Renderer_Framebuffer *framebuffer = &g_renderer.framebuffers.data[ framebuffer_idx ];
-		if ( string_equals( name, framebuffer->name ) )
-			return framebuffer_idx;
-	}
+	ForIt( g_renderer.framebuffers.data, g_renderer.framebuffers.size ) {
+		if ( string_equals( name, it.name ) )
+			return it_index;
+	}}
 
 	return INVALID_FRAMEBUFFER_ID;
 }
@@ -1253,33 +1240,30 @@ renderer_set_active_framebuffer_color_attachment_points( Renderer_Framebuffer_ID
 	// GLenum opengl_color_attachments[ GL_MAX_COLOR_ATTACHMENTS ];
 
 	// Mark all color attachments as not active (depth/stencil is always active).
-	for ( u32 attachment_idx = 0; attachment_idx < framebuffer->attachments.size; attachment_idx += 1 ) {
-		Renderer_Framebuffer_Attachment *attachment = &framebuffer->attachments.data[ attachment_idx ];
-		if ( attachment->attachment_point >= RendererFramebufferAttachmentPoint_Color0 &&
-			attachment->attachment_point <= g_renderer.opengl_max_color_attachments ) {
+	ForIt( framebuffer->attachments.data, framebuffer->attachments.size ) {
+		if ( it.attachment_point >= RendererFramebufferAttachmentPoint_Color0 &&
+			it.attachment_point <= g_renderer.opengl_max_color_attachments ) {
 			// Color attachment, set as not active.
-			attachment->bits &= ~RendererFramebufferAttachmentBit_IsActive;
+			it.bits &= ~RendererFramebufferAttachmentBit_IsActive;
 		}
-	}
+	}}
 
-	for ( u32 color_attachment_idx = 0; color_attachment_idx < color_attachment_points.size; color_attachment_idx += 1 ) {
-		Renderer_Framebuffer_Attachment_Point attachment_point = color_attachment_points.data[ color_attachment_idx ];
+	ForIt( color_attachment_points.data, color_attachment_points.size ) {
 		// Mark attachment with this color attachment point as active.
-		for ( u32 attachment_idx = 0; attachment_idx < framebuffer->attachments.size; attachment_idx += 1 ) {
-			Renderer_Framebuffer_Attachment *attachment = &framebuffer->attachments.data[ attachment_idx ];
-			if ( attachment->attachment_point == attachment_point ) {
-				attachment->bits |= RendererFramebufferAttachmentBit_IsActive;
+		ForIt2( framebuffer->attachments.data, framebuffer->attachments.size ) {
+			if ( it2.attachment_point == it ) {
+				it2.bits |= RendererFramebufferAttachmentBit_IsActive;
 				break;
 			}
-		}
+		}}
 
 		// Check whether there are non-color attachments.
-		Assert( attachment_point >= RendererFramebufferAttachmentPoint_Color0 && attachment_point <= g_renderer.opengl_max_color_attachments );
+		Assert( it >= RendererFramebufferAttachmentPoint_Color0 && it <= g_renderer.opengl_max_color_attachments );
 
-		GLenum opengl_color_attachment = renderer_framebuffer_attachment_point_to_opengl( attachment_point );
+		GLenum opengl_color_attachment = renderer_framebuffer_attachment_point_to_opengl( it );
 		// opengl_color_attachments[ attachment_idx ] = opengl_color_attachment;
 		array_add( &opengl_color_attachments, opengl_color_attachment );
-	}
+	}}
 
 	glNamedFramebufferDrawBuffers( framebuffer->opengl_framebuffer, opengl_color_attachments.size, opengl_color_attachments.data );
 	array_free( &opengl_color_attachments );
@@ -1355,13 +1339,11 @@ geometry_pass_draw_same_material_commands( ArrayView< Renderer_Render_Command > 
 	renderer_bind_shader_program( gbuffer_shader );
 	geometry_pass_use_material( material );
 
-	Renderer_Render_Command *command;
-	for ( u32 command_idx = 0; command_idx < commands.size; command_idx += 1 ) {
-		command = &commands.data[ command_idx ];
-		Mesh *mesh = mesh_instance( command->mesh_id );
-		transform_recalculate_dirty_matrices( command->transform );
-		renderer_shader_program_set_uniform( gbuffer_shader, "model", RendererDataType_Matrix4x4_f32, &command->transform->model_matrix );
-		renderer_shader_program_set_uniform( gbuffer_shader, "normal_matrix", RendererDataType_Matrix3x3_f32, &command->transform->normal_matrix );
+	ForIt( commands.data, commands.size ) {
+		Mesh *mesh = mesh_instance( it.mesh_id );
+		transform_recalculate_dirty_matrices( it.transform );
+		renderer_shader_program_set_uniform( gbuffer_shader, "model", RendererDataType_Matrix4x4_f32, &it.transform->model_matrix );
+		renderer_shader_program_set_uniform( gbuffer_shader, "normal_matrix", RendererDataType_Matrix3x3_f32, &it.transform->normal_matrix );
 
 		glBindVertexArray( mesh->opengl_vao );
 		GLenum index_type = index_type_size_to_opengl( mesh->indices.item_size );
@@ -1371,14 +1353,7 @@ geometry_pass_draw_same_material_commands( ArrayView< Renderer_Render_Command > 
 			/*    type */ index_type,
 			/* indices */ NULL
 		);
-
-		Vector4_f32 red = Vector4_f32( 1.0f, 0.0f, 0.0f, 1.0f );
-		Vector4_f32 green = Vector4_f32( 0.0f, 1.0f, 0.0f, 1.0f );
-		Vector4_f32 blue_half = Vector4_f32( 0.0f, 0.0f, 1.0f, 0.5f );
-		// glClearBufferfv( GL_COLOR, 0, &red.x ); // position
-		// glClearBufferfv( GL_COLOR, 1, &green.x ); // normal
-		// glClearBufferfv( GL_COLOR, 2, &blue_half.x ); // color_specular
-	}
+	}}
 }
 
 // TODO: Remove
@@ -1425,16 +1400,12 @@ draw_pass_geometry() {
 	);
 
 	u32 command_idx = 0;
-	for ( u32 material_sequence_idx = 0;
-		material_sequence_idx < g_renderer.render_queue_material_sequence.size;
-		material_sequence_idx += 1
-	) {
-		u16 sequence = g_renderer.render_queue_material_sequence.data[ material_sequence_idx ];
+	ForIt( g_renderer.render_queue_material_sequence.data, g_renderer.render_queue_material_sequence.size ) {
 		Renderer_Render_Command *command_ptr = &g_renderer.render_queue.data[ command_idx ];
-		ArrayView< Renderer_Render_Command > commands = { .size = sequence, .data = command_ptr };
+		ArrayView< Renderer_Render_Command > commands = { .size = it, .data = command_ptr };
 		geometry_pass_draw_same_material_commands( commands );
-		command_idx += sequence;
-	}
+		command_idx += it;
+	}}
 
 	Assert( command_idx == g_renderer.render_queue.size );
 }
@@ -1487,9 +1458,7 @@ lighting_pass_draw_same_material_commands( ArrayView< Renderer_Render_Command > 
 	renderer_bind_shader_program( material->shader_program );
 	lighting_pass_use_material( material );
 
-	Renderer_Render_Command *command;
-	for ( u32 command_idx = 0; command_idx < commands.size; command_idx += 1 ) {
-		command = &commands.data[ command_idx ];
+	ForIt( commands.data, commands.size ) {
 		// draw_fullscreen_quad?
 		//renderer_shader_program_set_uniform( gbuffer_shader, "model", RendererDataType_Matrix4x4_f32, &command->transform->model_matrix );
 		//renderer_shader_program_set_uniform( gbuffer_shader, "normal_matrix", RendererDataType_Matrix3x3_f32, &command->transform->normal_matrix );
@@ -1501,7 +1470,7 @@ lighting_pass_draw_same_material_commands( ArrayView< Renderer_Render_Command > 
 		//	/*    type */ GL_UNSIGNED_INT,
 		//	/* indices */ NULL
 		//);
-	}
+	}}
 }
 
 static void
@@ -1514,16 +1483,12 @@ draw_pass_lighting() {
 	renderer_bind_texture( 2, g_renderer.gbuffer.texture_color_specular );
 
 	u32 command_idx = 0;
-	for ( u32 material_sequence_idx = 0;
-		material_sequence_idx < g_renderer.render_queue_material_sequence.size;
-		material_sequence_idx += 1
-	) {
-		u16 sequence = g_renderer.render_queue_material_sequence.data[ material_sequence_idx ];
+	ForIt( g_renderer.render_queue_material_sequence.data, g_renderer.render_queue_material_sequence.size ) {
 		Renderer_Render_Command *command_ptr = &g_renderer.render_queue.data[ command_idx ];
-		ArrayView< Renderer_Render_Command > commands = { .size = sequence, .data = command_ptr };
+		ArrayView< Renderer_Render_Command > commands = { .size = it, .data = command_ptr };
 		lighting_pass_draw_same_material_commands( commands );
-		command_idx += sequence * sizeof( Renderer_Render_Command );
-	}
+		command_idx += it * sizeof( Renderer_Render_Command );
+	}}
 
 	Assert( command_idx == g_renderer.render_queue.size - 1 );
 
@@ -1841,18 +1806,16 @@ renderer_mesh_upload( Mesh_ID mesh_id ) {
 	*/
 	u64 offset = 0;
 	u64 attributes_size = mesh_vertex_attributes_size( mesh );
-	for ( u32 attribute_idx = 0; attribute_idx < mesh->vertex_attributes.size; attribute_idx += 1 ) {
-
-		Renderer_Vertex_Attribute *atr = &mesh->vertex_attributes.data[ attribute_idx ];
-		if ( !atr->active )
+	ForIt( mesh->vertex_attributes.data, mesh->vertex_attributes.size ) {
+		if ( !it.active )
 			continue;
 
-		GLenum opengl_data_type = renderer_data_type_to_opengl_type( atr->data_type );
-		u32 data_type_size = renderer_data_type_size( atr->data_type ) * atr->elements;
-		glVertexAttribPointer( atr->index, atr->elements, opengl_data_type, atr->normalize, attributes_size, ( void * )offset );
-		glEnableVertexAttribArray( atr->index );
+		GLenum opengl_data_type = renderer_data_type_to_opengl_type( it.data_type );
+		u32 data_type_size = renderer_data_type_size( it.data_type ) * it.elements;
+		glVertexAttribPointer( it.index, it.elements, opengl_data_type, it.normalize, attributes_size, ( void * )offset );
+		glEnableVertexAttribArray( it.index );
 		offset += data_type_size;
-	}
+	}}
 
 	/* 5. Create Element Buffer Object */
 
@@ -1880,12 +1843,11 @@ bool
 renderer_model_meshes_upload( Model_ID model_id ) {
 	Model *model = model_instance( model_id );
 	bool mesh_uploaded;
-	for ( u32 mesh_idx = 0; mesh_idx < model->meshes.size; mesh_idx += 1 ) {
-		Mesh_ID mesh_id = model->meshes.data[ mesh_idx ];
-		mesh_uploaded = renderer_mesh_upload( mesh_id );
+	ForIt( model->meshes.data, model->meshes.size ) {
+		mesh_uploaded = renderer_mesh_upload( it );
 		if ( !mesh_uploaded )
 			return false;
-	}
+	}}
 
 	return true;
 }
