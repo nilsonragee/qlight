@@ -83,9 +83,10 @@
 		}
 	}
 */
+// WARNING: Enclose with 2 curly braces! Take a look at example above.
 #define ForIt( pointer, count )  \
 		For( count ) {  \
-			auto *it = &pointer[ it_index ];
+			auto &it = pointer[ it_index ];
 
 /*
 	StringView_ASCII str = "Hello World";
@@ -103,27 +104,28 @@
 		}
 	}
 */
+// WARNING: Enclose with 2 curly braces! Take a look at example above.
 #define ForItBackwards( pointer, count )  \
 		ForBackwards( count ) {  \
-			auto *it = &pointer[ it_index ];
+			auto &it = pointer[ it_index ];
 
 
 #define ForIt2( pointer, count )  \
 		For2( count ) {  \
-			auto *it2 = &pointer[ it2_index ];
+			auto &it2 = pointer[ it2_index ];
 
 #define ForIt2Backwards( pointer, count )  \
 		For2Backwards( count ) {  \
-			auto *it2 = &pointer[ it2_index ];
+			auto &it2 = pointer[ it2_index ];
 
 
 #define ForIt3( pointer, count )  \
 		For3( count ) {  \
-			auto *it3 = &pointer[ it3_index ];
+			auto &it3 = pointer[ it3_index ];
 
 #define ForIt3Backwards( pointer, count )  \
 		For3Backwards( count ) {  \
-			auto *it3 = &pointer[ it3_index ];
+			auto &it3 = pointer[ it3_index ];
 
 
 #define ARRAY_SIZE( array )  sizeof( array ) / sizeof( array[ 0 ] )
