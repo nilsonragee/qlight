@@ -950,8 +950,8 @@ renderer_shader_program_set_uniform( Renderer_Shader_Program *program, StringVie
 				case RendererDataType_Matrix3x3_f32: glUniformMatrix3fv( location, 1, transpose, ( f32 * )value ); break;
 				case RendererDataType_Matrix4x4_f32: glUniformMatrix4fv( location, 1, transpose, ( f32 * )value ); break;
 				default:
-					return false;
 					AssertMessage( false, "Unsupported type" );
+					return false;
 			}
 		}
 	}}
