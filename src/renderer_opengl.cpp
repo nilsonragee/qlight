@@ -9,6 +9,7 @@ constexpr u64 RENDERER_INITIAL_PROGRAMS_CAPACITY = 4;
 constexpr u64 RENDERER_INITIAL_STAGES_CAPACITY = 8;
 constexpr u64 RENDERER_INITIAL_FRAMEBUFFERS_CAPACITY = 2;
 constexpr u64 RENDERER_INITIAL_RENDERBUFFERS_CAPACITY = 2;
+constexpr u64 RENDERER_INITIAL_UNIFORM_BUFFERS_CAPACITY = 12;
 
 constexpr u64 RENDERER_INITIAL_FRAMEBUFFER_ATTACHMENTS_CAPACITY = 8;
 
@@ -629,6 +630,7 @@ renderer_init() {
 	g_renderer.renderbuffers = array_new< Renderer_Renderbuffer >( sys_allocator, RENDERER_INITIAL_RENDERBUFFERS_CAPACITY );
 	g_renderer.programs = array_new< Renderer_Shader_Program >( sys_allocator, RENDERER_INITIAL_PROGRAMS_CAPACITY );
 	g_renderer.stages = array_new< Renderer_Shader_Stage >( sys_allocator, RENDERER_INITIAL_STAGES_CAPACITY );
+	g_renderer.uniform_buffers = array_new< Renderer_Uniform_Buffer >( sys_allocator, RENDERER_INITIAL_UNIFORM_BUFFERS_CAPACITY );
 
 	GLint gl_result = 0;
 	glGetIntegerv( GL_MAX_COLOR_ATTACHMENTS, &gl_result );
@@ -667,6 +669,8 @@ renderer_shutdown() {
 	array_free( &g_renderer.renderbuffers );
 	array_free( &g_renderer.programs );
 	array_free( &g_renderer.stages );
+	array_free( &g_renderer.uniform_buffers );
+
 	array_free( &g_renderer.render_queue );
 	array_free( &g_renderer.render_queue_material_sequence );
 }
@@ -1905,20 +1909,126 @@ renderer_texture_purple_checkers() {
 	return g_renderer.texture_purple_checkers;
 }
 
+static void
+opengl_create_uniform_buffer( GLuint *id, GLsizeiptr size, GLuint binding, GLenum usage, StringView_ASCII debug_name ) {
+	glGenBuffers( 1, id );
+#ifdef QLIGHT_DEBUG
+	if ( debug_name.size > 0 )
+		glObjectLabel( GL_UNIFORM_BUFFER, *id, debug_name.size, debug_name.data );
+	log(
+		LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Created and bound Uniform Buffer '" StringViewFormat "' (#%u).",
+		StringViewArgument( debug_name ),
+		*id
+	);
+#endif
+	glNamedBufferData(
+		/* buffer */ *id,
+		/*   size */ size,
+		/*   data */ NULL,
+		/*  usage */ usage
+	);
+}
+
 Renderer_Uniform_Buffer *
-renderer_uniform_buffer_create( StringView_ASCII name, UBO_Struct *data, u32 size, u32 binding ) {
-	Renderer_Uniform_Buffer uniform_buffer = {
+renderer_uniform_buffer_create( StringView_ASCII name, ArrayView< u8 > data, u32 binding ) {
+	Renderer_Uniform_Buffer _uniform_buffer = {
 		.name = name,
 		.data = data,
-		.size = size,
 		.binding = binding
+		// .opengl_ubo
 	};
-	return NULL;
+
+	// TODO: Make it configurable.
+	GLenum opengl_usage = GL_DYNAMIC_DRAW;
+	opengl_create_uniform_buffer( &_uniform_buffer.opengl_ubo, data.size, binding, opengl_usage, name );
+
+	u32 buffer_idx = array_add( &g_renderer.uniform_buffers, _uniform_buffer );
+	Renderer_Uniform_Buffer *uniform_buffer = &g_renderer.uniform_buffers.data[ buffer_idx ];
+
+	if ( binding != INVALID_UNIFORM_BUFFER_BINDING )
+		renderer_uniform_buffer_set_binding( uniform_buffer, binding );
+
+	return uniform_buffer;
+}
+
+GLenum
+renderer_uniform_buffer_access_mode_to_opengl( Renderer_Uniform_Buffer_Access_Mode access_mode ) {
+	switch ( access_mode ) {
+
+		case RendererUniformBufferAccessMode_Read:  return GL_READ_ONLY;
+		case RendererUniformBufferAccessMode_Write:  return GL_WRITE_ONLY;
+		case RendererUniformBufferAccessMode_ReadWrite:  return GL_READ_WRITE;
+
+		case RendererUniformBufferAccessMode_None:
+		default:  return GL_INVALID_ENUM;
+	};
 }
 
 void
 renderer_uniform_buffer_set_binding( Renderer_Uniform_Buffer *uniform_buffer, u32 binding ) {
+	glBindBuffer( GL_UNIFORM_BUFFER, uniform_buffer->opengl_ubo );
+	glBindBufferBase(
+		/* target */ GL_UNIFORM_BUFFER,
+		/* index  */ binding,
+		/* buffer */ uniform_buffer->opengl_ubo
+	);
+	uniform_buffer->binding = binding;
+}
 
+void *
+renderer_uniform_buffer_memory_map(
+	Renderer_Uniform_Buffer *uniform_buffer,
+	Renderer_Uniform_Buffer_Access_Mode access_mode,
+	u32 size,
+	u32 offset
+) {
+	GLenum opengl_access_mode = renderer_uniform_buffer_access_mode_to_opengl( access_mode );
+	void *uniform_data = glMapNamedBufferRange(
+		/* buffer */ uniform_buffer->opengl_ubo,
+		/* offset */ offset,
+		/* length */ size,
+		/* access */ opengl_access_mode
+	);
+	return uniform_data;
+}
+
+u32
+renderer_uniform_buffer_write( Renderer_Uniform_Buffer *uniform_buffer, ArrayView< u8 > write_data, u32 size, u32 offset ) {
+	if ( !write_data.data || write_data.size == 0 )
+		return 0;
+
+	Assert( size <= uniform_buffer->data.size - offset );
+	u32 write_size = size;
+	if ( size == 0 )
+		write_size = uniform_buffer->data.size - offset;
+
+	u8 *uniform_data = ( u8 * )renderer_uniform_buffer_memory_map_for_write( uniform_buffer, write_size, offset );
+	memcpy( uniform_data, write_data.data, write_size );
+	Assert( renderer_uniform_buffer_memory_unmap( uniform_buffer ) );
+	return write_size;
+}
+
+u32
+renderer_uniform_buffer_read( Renderer_Uniform_Buffer *uniform_buffer, Array< u8 > *out_read_data, u32 size, u32 offset ) {
+	if ( !out_read_data )
+		return 0;
+
+	Assert( size <= uniform_buffer->data.size - offset );
+	ArrayView< u8 > read_view;
+	read_view.size = size;
+	if ( size == 0 )
+		read_view.size = uniform_buffer->data.size - offset;
+
+	read_view.data = ( u8 * )renderer_uniform_buffer_memory_map_for_read( uniform_buffer, size, offset );
+	u32 bytes_read = array_add_many( out_read_data, read_view );
+	Assert( renderer_uniform_buffer_memory_unmap( uniform_buffer ) );
+	return bytes_read;
+}
+
+bool
+renderer_uniform_buffer_memory_unmap( Renderer_Uniform_Buffer *uniform_buffer ) {
+	bool result = glUnmapNamedBuffer( uniform_buffer->opengl_ubo );
+	return result;
 }
 
 bool

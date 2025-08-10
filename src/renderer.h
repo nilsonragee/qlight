@@ -99,8 +99,7 @@ struct Renderer_Uniform {
 typedef void UBO_Struct;
 struct Renderer_Uniform_Buffer {
 	StringView_ASCII name;
-	UBO_Struct *data;
-	u32 size;
+	ArrayView< u8 > data;
 	u32 binding;
 
 	// OpenGL-specific:
@@ -357,10 +356,47 @@ Texture_ID
 renderer_texture_purple_checkers();
 
 Renderer_Uniform_Buffer *
-renderer_uniform_buffer_create( StringView_ASCII name, UBO_Struct *data, u32 size, u32 binding = INVALID_UNIFORM_BUFFER_BINDING );
+renderer_uniform_buffer_create( StringView_ASCII name, ArrayView< u8 > data, u32 binding = INVALID_UNIFORM_BUFFER_BINDING );
+
+enum Renderer_Uniform_Buffer_Access_Mode : u8 {
+	RendererUniformBufferAccessMode_None = 0,
+	RendererUniformBufferAccessMode_Read,
+	RendererUniformBufferAccessMode_Write,
+	RendererUniformBufferAccessMode_ReadWrite
+};
+
+GLenum
+renderer_uniform_buffer_access_mode_to_opengl( Renderer_Uniform_Buffer_Access_Mode access_mode );
 
 void
 renderer_uniform_buffer_set_binding( Renderer_Uniform_Buffer *uniform_buffer, u32 binding );
+
+void *
+renderer_uniform_buffer_memory_map( Renderer_Uniform_Buffer *uniform_buffer, Renderer_Uniform_Buffer_Access_Mode access_mode, u32 size = 0, u32 offset = 0 );
+
+inline void *
+renderer_uniform_buffer_memory_map_for_read( Renderer_Uniform_Buffer *uniform_buffer, u32 size = 0, u32 offset = 0 ) {
+	return renderer_uniform_buffer_memory_map( uniform_buffer, RendererUniformBufferAccessMode_Read, size, offset );
+}
+
+inline void *
+renderer_uniform_buffer_memory_map_for_write( Renderer_Uniform_Buffer *uniform_buffer, u32 size = 0, u32 offset = 0 ) {
+	return renderer_uniform_buffer_memory_map( uniform_buffer, RendererUniformBufferAccessMode_Write, size, offset );
+}
+
+inline void *
+renderer_uniform_buffer_memory_map_for_read_write( Renderer_Uniform_Buffer *uniform_buffer, u32 size = 0, u32 offset = 0 ) {
+	return renderer_uniform_buffer_memory_map( uniform_buffer, RendererUniformBufferAccessMode_ReadWrite, size, offset );
+}
+
+bool
+renderer_uniform_buffer_memory_unmap( Renderer_Uniform_Buffer *uniform_buffer );
+
+u32
+renderer_uniform_buffer_write( Renderer_Uniform_Buffer *uniform_buffer, ArrayView< u8 > write_data, u32 size = 0, u32 offset = 0 );
+
+u32
+renderer_uniform_buffer_read( Renderer_Uniform_Buffer *uniform_buffer, Array< u8 > *out_read_data, u32 size = 0, u32 offset = 0 );
 
 bool
 renderer_uniform_buffer_destroy( Renderer_Uniform_Buffer *uniform_buffer );
