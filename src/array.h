@@ -33,32 +33,40 @@ Array<T> array_new(Allocator *allocator, u32 initial_capacity) {
 	return array;
 }
 
-// count = 0 -- means count to the end of the array's size.
-template <typename T>
-ArrayView<T> array_view(Array<T> *array, u32 offset = 0, u32 count = 0) {
-	AssertMessage(array, "ArrayView array pointer is NULL");
-	AssertMessage(offset <= array->size, "ArrayView array offset is out of bounds");
-	if (offset > array->size) {
-		// If array offset is out of bounds, return everything zeroed.
-		ArrayView<T> view = { /* size */ 0, /* data */ NULL };
+template < typename T >
+static ArrayView< T > array_view_impl( T* data, u32 data_size, u32 size = 0, u32 offset = 0 ) {
+	ArrayView< T > view;
+	if ( offset > size ) {
+		view.data = NULL;
+		view.size = 0;
 		return view;
 	}
 
-	T *view_data = array->data + offset;
-
-	const u32 view_size_available = array->size - offset;
-	const bool count_to_end = (count == 0);
-	u32 view_size;
+	const u32 size_available = data_size - offset;
+	const bool count_to_end = (size == 0);
 	if (count_to_end) {
-		view_size = view_size_available;
+		view.size = size_available;
 	} else {
-		AssertMessage(count <= view_size_available, "ArrayView size is out of bounds");
+		AssertMessage(size <= size_available, "ArrayView size is out of bounds");
 		// If view size is overflowing, clamp it to the end of array.
-		view_size = (count <= view_size_available) ? count : view_size_available;
+		view.size = (size <= size_available) ? size : size_available;
 	}
 
-	ArrayView<T> view = { /* size */ view_size, /* data */ view_data };
+	view.data = data + offset;
 	return view;
+}
+
+// count = 0 -- means count to the end of the array's size.
+template <typename T>
+ArrayView<T> array_view(Array<T> *array, u32 offset = 0, u32 count = 0) {
+	AssertMessage(offset <= array->size, "ArrayView array offset is out of bounds");
+	return array_view_impl( array->data, array->size, count, offset );
+}
+
+template <typename T>
+ArrayView<T> array_view(T *data, u32 data_size, u32 offset = 0, u32 count = 0) {
+	AssertMessage(offset <= data_size, "ArrayView data offset is out of bounds");
+	return array_view_impl( data, data_size, offset, count );
 }
 
 template <typename T>
