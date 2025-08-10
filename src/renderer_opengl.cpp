@@ -751,8 +751,8 @@ opengl_compile_shader_stage( Renderer_Shader_Stage *stage ) {
 #endif
 
 	GLuint shader_id = glCreateShader( shader_type );
-	const char *sources[] = { stage->source_code.data };
-	const s32 lengths[] = { stage->source_code.size };
+	const GLchar *sources[] = { stage->source_code.data };
+	const GLint lengths[] = { ( GLint )stage->source_code.size };
 	glShaderSource( shader_id, 1, sources, lengths );
 
 	GLint compile_result;
@@ -812,7 +812,7 @@ renderer_load_shader_stage( StringView_ASCII name, Renderer_Shader_Kind kind, St
 	rewind( file );
 
 	stage.source_code = string_new( sys_allocator, file_size );
-	stage.source_code.size = fread( stage.source_code.data, sizeof( char ), file_size, file );
+	stage.source_code.size = ( u32 )fread( stage.source_code.data, sizeof( char ), file_size, file );
 	fclose( file );
 
 	u32 stage_idx = array_add( &g_renderer.stages, stage );
@@ -1549,7 +1549,7 @@ renderer_draw_frame() {
 	// renderer_draw_post_processsing_pass();
 	// renderer_draw_ui_pass();
 
-	g_renderer.frame_time.current = glfwGetTime();
+	g_renderer.frame_time.current = ( f32 )glfwGetTime();
 	g_renderer.frame_time.delta = ( g_renderer.frame_time.current - g_renderer.frame_time.last ) * 1000.0f; // sec -> ms
 	g_renderer.frame_time.last = g_renderer.frame_time.current;
 
@@ -1815,8 +1815,8 @@ renderer_mesh_upload( Mesh_ID mesh_id ) {
 			continue;
 
 		GLenum opengl_data_type = renderer_data_type_to_opengl_type( it.data_type );
-		u32 data_type_size = renderer_data_type_size( it.data_type ) * it.elements;
-		glVertexAttribPointer( it.index, it.elements, opengl_data_type, it.normalize, attributes_size, ( void * )offset );
+		u32 data_type_size = ( u32 )renderer_data_type_size( it.data_type ) * it.elements;
+		glVertexAttribPointer( it.index, it.elements, opengl_data_type, it.normalize, ( GLsizei )attributes_size, ( void * )offset );
 		glEnableVertexAttribArray( it.index );
 		offset += data_type_size;
 	}}

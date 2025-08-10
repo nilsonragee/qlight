@@ -5,10 +5,8 @@
 #define NOSERVICE
 #define NOMCX
 #define NOIME
+#undef APIENTRY
 #include <Windows.h>
-#undef NOSERVICE
-#undef NOMCX
-#undef NOIME
 
 #include "common.h"
 #include "string.h"

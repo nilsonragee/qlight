@@ -58,7 +58,7 @@ void mouse_callback(GLFWwindow* window, double new_mouse_x, double new_mouse_y) 
 		offset_y *= mouse.sensitivity;
 		Quaternion delta_pitch = quaternion_from_axis_angle( WORLD_DIRECTION_RIGHT, radians( -offset_y ) );
 		Quaternion delta_yaw = quaternion_from_axis_angle( WORLD_DIRECTION_UP, radians( offset_x ) );
-		Quaternion *q;
+		// Quaternion *q;
 		int i = g_event_index;
 		// q = &delta_pitch;
 		// log_info( "[%d] delta_pitch: (%.3f, %.3f, %.3f, %.3f)", i, q->x, q->y, q->z, q->w );
