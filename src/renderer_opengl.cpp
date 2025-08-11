@@ -92,6 +92,15 @@ struct Vertex_Quad {
 #define GL_CHECK( x ) x
 #endif
 
+#define log_gl( log_level, format, ... )  log( log_level, QL_LOG_CHANNEL "/GL", format, __VA_ARGS__ )
+#define log_error_gl( format, ... )  log_gl( LogLevel_Error, format, __VA_ARGS__ )
+#define log_warning_gl( format, ... )  log_gl( LogLevel_Warning, format, __VA_ARGS__ )
+#ifdef QLIGHT_DEBUG
+#define log_debug_gl( format, ... )  log_gl( LogLevel_Debug, format, __VA_ARGS__ )
+#else
+#define log_debug_gl( format, ... )
+#endif
+
 static void
 opengl_error_clear() {
     while ( glGetError() != GL_NO_ERROR ); // or !glGetError()
@@ -100,7 +109,12 @@ opengl_error_clear() {
 static bool
 opengl_error_log( const char *function, const char *file, int line ) {
     while ( GLenum error = glGetError() ) {
-        printf( "OpenGL: ERROR(%u): %s:%d > %s\n", error, file, line, function );
+		log_error_gl( "OpenGL Error #%u generated at:\n%s:%d: %s",
+			error,
+			file,
+			line,
+			function
+		);
         return false;
     }
     return true;
@@ -146,8 +160,8 @@ opengl_generate_and_bind_vertex_array( GLuint *id, StringView_ASCII debug_name )
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_VERTEX_ARRAY, *id, debug_name.size, debug_name.data );
-	log(
-		LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Generated and bound VAO '" StringViewFormat "' (#%u).",
+
+	log_debug_gl( "Generated and bound VAO '" StringViewFormat "' (#%u).",
 		StringViewArgument( debug_name ),
 		*id
 	);
@@ -161,8 +175,8 @@ opengl_generate_and_bind_vertex_buffer( GLuint *id, StringView_ASCII debug_name 
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_BUFFER, *id, debug_name.size, debug_name.data );
-	log(
-		LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Generated and bound VBO '" StringViewFormat "' (#%u).",
+
+	log_debug_gl( "Generated and bound VBO '" StringViewFormat "' (#%u).",
 		StringViewArgument( debug_name ),
 		*id
 	);
@@ -176,8 +190,8 @@ opengl_generate_and_bind_element_buffer( GLuint *id, StringView_ASCII debug_name
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_BUFFER, *id, debug_name.size, debug_name.data );
-	log(
-		LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Generated and bound EBO '" StringViewFormat "' (#%u).",
+
+	log_debug_gl( "Generated and bound EBO '" StringViewFormat "' (#%u).",
 		StringViewArgument( debug_name ),
 		*id
 	);
@@ -580,9 +594,8 @@ opengl_debug_message_callback(
 	}
 	// The function itself is called only with the OpenGL debug output set up,
 	// no need to wrap with `QLIGHT_DEBUG`.
-	log(
+	log_gl(
 		log_level,
-		"Renderer/GL",
 		StringViewFormat "::" StringViewFormat " (#%d, " StringViewFormat "): " StringViewFormat,
 		StringViewArgument( source_name ),
 		StringViewArgument( type_name ),
@@ -743,12 +756,10 @@ static GLuint
 opengl_compile_shader_stage( Renderer_Shader_Stage *stage ) {
 	GLuint shader_type = renderer_shader_kind_to_opengl( stage->kind );
 	StringView_ASCII shader_kind = renderer_shader_kind_name( stage->kind );
-#ifdef QLIGHT_DEBUG
-	log( LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Compiling '" StringViewFormat "' " StringViewFormat " stage shader...",
+	log_debug_gl( "Compiling '" StringViewFormat "' " StringViewFormat " stage shader...",
 		StringViewArgument( stage->name ),
 		StringViewArgument( shader_kind )
 	);
-#endif
 
 	GLuint shader_id = glCreateShader( shader_type );
 	const GLchar *sources[] = { stage->source_code.data };
@@ -761,22 +772,22 @@ opengl_compile_shader_stage( Renderer_Shader_Stage *stage ) {
 	if ( compile_result != GL_TRUE ) {
 		StringView_ASCII info_log = opengl_get_info_log( OpenGL_Shader, shader_id );
 
-		// @OTODO: Use Console API.
-		printf(
-			"ERROR: Failed to compile \"" StringViewFormat "\" " StringViewFormat " stage shader!\n",
+		log_error_gl( "Failed to compile '" StringViewFormat "' " StringViewFormat " stage shader! Error log:\n" StringViewFormat,
+			StringViewArgument( stage->name ),
+			StringViewArgument( shader_kind ),
+			StringViewArgument( info_log )
+		);
+
+		// No need to delete it now, it will be deleted later
+		//   in `renderer_create_and_compile_shader_program`
+		//   whether it compiled successfully or not.
+	} else {
+		log_debug_gl( "Compiled '" StringViewFormat "' " StringViewFormat" shader stage.",
 			StringViewArgument( stage->name ),
 			StringViewArgument( shader_kind )
 		);
-		printf( "OpenGL: \"" StringViewFormat "\"\n", StringViewArgument( info_log ) );
-
-		glDeleteShader( shader_id );
 	}
 
-#ifdef QLIGHT_DEBUG
-	log( LogLevel_Debug, QL_LOG_CHANNEL "/GL", "'" StringViewFormat "' compiled successfully.",
-		StringViewArgument( stage->name )
-	);
-#endif
 	return shader_id;
 }
 
@@ -859,7 +870,8 @@ renderer_create_and_compile_shader_program( StringView_ASCII name, ArrayView< Re
 		if ( program.linked_shaders & kind_bit ) {
 			// Complain and skip.
 			StringView_ASCII shader_kind = renderer_shader_kind_name( it->kind );
-			printf( "WARNING: Trying to attach " StringFormat " stage shader to \"" StringFormat "\" shader program, but it already has one. Skipping.\n",
+			log_warning_gl(
+				"WARNING: Trying to attach " StringFormat " stage shader to '" StringFormat "' shader program, but it already has one. Skipping.",
 				StringArgumentValue( shader_kind ),
 				StringArgumentValue( name )
 			);
@@ -883,22 +895,24 @@ renderer_create_and_compile_shader_program( StringView_ASCII name, ArrayView< Re
 	if ( opengl_result != GL_TRUE ) {
 		StringView_ASCII info_log = opengl_get_info_log( OpenGL_Program, program.opengl_program );
 
-		// @OTODO: Use Console API.
-		printf( "ERROR: Failed to link \"" StringFormat "\" shader program!\n", StringArgumentValue( program.name ) );
-		printf( "OpenGL: \"" StringFormat "\"\n", StringArgumentValue( info_log ) );
+		log_error_gl(
+			"Failed to link '" StringFormat "' shader program! Error log:\n" StringFormat,
+			StringArgumentValue( program.name ),
+			StringViewArgument( info_log )
+		);
 	}
-	Assert( opengl_result );
 
 	GL_CHECK( glValidateProgram( program.opengl_program ) );
 	glGetProgramiv( program.opengl_program, GL_VALIDATE_STATUS, &opengl_result );
 	if ( opengl_result != GL_TRUE ) {
 		StringView_ASCII info_log = opengl_get_info_log( OpenGL_Program, program.opengl_program );
 
-		// @OTODO: Use Console API.
-		printf( "ERROR: Failed to validate \"" StringViewFormat "\" shader program!\n", StringViewArgument( program.name ) );
-		printf( "OpenGL: \"" StringFormat "\"\n", StringArgumentValue( info_log ) );
+		log_error_gl(
+			"Failed to validate '" StringFormat "' shader program! Error log:\n" StringFormat,
+			StringArgumentValue( program.name ),
+			StringViewArgument( info_log )
+		);
 	}
-	Assert( opengl_result );
 
 	// Iterate over program's shaders.
 	// No `.data` because it is a flat C array, not Array/ArrayView struct.
@@ -915,11 +929,12 @@ renderer_create_and_compile_shader_program( StringView_ASCII name, ArrayView< Re
 		if ( opengl_result != GL_TRUE ) {
 			StringView_ASCII info_log = opengl_get_info_log( OpenGL_Program, program.opengl_program );
 
-			// @OTODO: Use Console API.
-			printf( "ERROR: Failed to mark \"" StringViewFormat "\" shader stage for deletion!\n", StringViewArgument( program.name ) );
-			printf( "OpenGL: \"" StringFormat "\"\n", StringArgumentValue( info_log ) );
+			log_error_gl(
+				"Failed to mark '" StringFormat "' shader stage for deletion! Error log:\n" StringFormat,
+				StringArgumentValue( it->name ),
+				StringViewArgument( info_log )
+			);
 		}
-		Assert( opengl_result );
 	}}
 
 	u32 program_idx = array_add( &g_renderer.programs, program );
@@ -1730,8 +1745,7 @@ opengl_create_and_bind_texture_2d( GLuint *id, StringView_ASCII debug_name ) {
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_TEXTURE, *id, debug_name.size, debug_name.data );
-	log(
-		LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Created and bound 2D Texture '" StringViewFormat "' (#%u).",
+	log_debug_gl( "Created and bound 2D Texture '" StringViewFormat "' (#%u).",
 		StringViewArgument( debug_name ),
 		*id
 	);
@@ -1915,8 +1929,7 @@ opengl_create_uniform_buffer( GLuint *id, GLsizeiptr size, GLuint binding, GLenu
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_UNIFORM_BUFFER, *id, debug_name.size, debug_name.data );
-	log(
-		LogLevel_Debug, QL_LOG_CHANNEL "/GL", "Created and bound Uniform Buffer '" StringViewFormat "' (#%u).",
+	log_debug_gl( "Created and bound Uniform Buffer '" StringViewFormat "' (#%u).",
 		StringViewArgument( debug_name ),
 		*id
 	);
