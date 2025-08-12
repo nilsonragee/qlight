@@ -80,17 +80,33 @@ struct Vertex_Quad {
 	Vector2_f32 texture_uv;
 };
 
-#define OPENGL_DEBUG
+#define QLIGHT_OPENGL_ERROR_CHECKS
 
-#define OPENGL_ERROR_CHECKS
-#ifdef OPENGL_ERROR_CHECKS
-#define GL_CHECK( x )      \
+#ifdef QLIGHT_OPENGL_ERROR_CHECKS
+#define GL_CLEAR_LOG_AND_EXECUTE( expression )  \
 	opengl_error_clear();  \
-    x;                     \
-    Assert( opengl_error_log( #x, __FILE__, __LINE__ ) )
-#else
-#define GL_CHECK( x ) x
+	expression
+
+#define GL_CHECK( expression )  \
+	GL_CLEAR_LOG_AND_EXECUTE( expression );  \
+	opengl_error_log( #expression, __FILE__, __LINE__ )
+
+#define GL_CHECK_AND_STORE_RESULT( result_pointer, expression )  \
+	GL_CLEAR_LOG_AND_EXECUTE( expression );  \
+	*result_pointer = opengl_error_log( #expression, __FILE__, __LINE__ )
+
+#define GL_ASSERT( expression )  \
+	GL_CLEAR_LOG_AND_EXECUTE( expression );  \
+	bool gl_call_generated_error = opengl_error_log( #expression, __FILE__, __LINE__ );  \
+	AssertMessage( gl_call_generated_error != GL_TRUE, #expression )
+
+#else /* QLIGHT_OPENGL_ERROR_CHECKS */
+#define GL_CLEAR_LOG_AND_EXECUTE( expression )  expression
+#define GL_CHECK( expression )  expression
+#define GL_CHECK_AND_STORE_RESULT( result_pointer, expression )  expression
+#define GL_ASSERT( expression )  expression
 #endif
+
 
 #define log_gl( log_level, format, ... )  log( log_level, QL_LOG_CHANNEL "/GL", format, __VA_ARGS__ )
 #define log_error_gl( format, ... )  log_gl( LogLevel_Error, format, __VA_ARGS__ )
@@ -948,6 +964,14 @@ renderer_create_and_compile_shader_program( StringView_ASCII name, ArrayView< Re
 bool
 renderer_shader_program_set_uniform( Renderer_Shader_Program *program, StringView_ASCII uniform_name, Renderer_Data_Type data_type, void *value ) {
 	bool transpose = g_renderer.uniforms_transpose_matrix;
+
+	// The function can determine whether the OpenGL call was successfull
+	//   only if the OpenGL error logging is turned on.  Otherwise, it
+	//   will always return true.
+	// `success` can only be overwritten if `QLIGHT_OPENGL_ERROR_CHECKS` is defined
+	//   and `glUniformXXX` call generates an error.
+	bool success = true;
+	bool *result = &success;
 	ForIt( program->uniforms.data, program->uniforms.size ) {
 		if ( string_equals( uniform_name, it.name ) ) {
 			Assert( data_type == it.data_type );
@@ -957,13 +981,20 @@ renderer_shader_program_set_uniform( Renderer_Shader_Program *program, StringVie
 			GLuint location = it.opengl_location;
 			switch ( data_type ) {
 				// Sampler2D ?
-				case RendererDataType_s32: glUniform1i( location, *( s32 *)value ); break;
-				case RendererDataType_f32: glUniform1f( location, *( f32 *)value ); break;
-				case RendererDataType_Vector2_f32: glUniform2fv( location, 1, ( f32 * )value ); break;
-				case RendererDataType_Vector3_f32: glUniform3fv( location, 1, ( f32 * )value ); break;
-				case RendererDataType_Vector4_f32: glUniform4fv( location, 1, ( f32 * )value ); break;
-				case RendererDataType_Matrix3x3_f32: glUniformMatrix3fv( location, 1, transpose, ( f32 * )value ); break;
-				case RendererDataType_Matrix4x4_f32: glUniformMatrix4fv( location, 1, transpose, ( f32 * )value ); break;
+				case RendererDataType_s32:
+					GL_CHECK_AND_STORE_RESULT( result, glUniform1i( location, *( s32 *)value ) ); break;
+				case RendererDataType_f32:
+					GL_CHECK_AND_STORE_RESULT( result, glUniform1f( location, *( f32 *)value ) ); break;
+				case RendererDataType_Vector2_f32:
+					GL_CHECK_AND_STORE_RESULT( result, glUniform2fv( location, 1, ( f32 * )value ) ); break;
+				case RendererDataType_Vector3_f32:
+					GL_CHECK_AND_STORE_RESULT( result, glUniform3fv( location, 1, ( f32 * )value ) ); break;
+				case RendererDataType_Vector4_f32:
+					GL_CHECK_AND_STORE_RESULT( result, glUniform4fv( location, 1, ( f32 * )value ) ); break;
+				case RendererDataType_Matrix3x3_f32:
+					GL_CHECK_AND_STORE_RESULT( result, glUniformMatrix3fv( location, 1, transpose, ( f32 * )value ) ); break;
+				case RendererDataType_Matrix4x4_f32:
+					GL_CHECK_AND_STORE_RESULT( result, glUniformMatrix4fv( location, 1, transpose, ( f32 * )value ) ); break;
 				default:
 					AssertMessage( false, "Unsupported type" );
 					return false;
@@ -971,7 +1002,7 @@ renderer_shader_program_set_uniform( Renderer_Shader_Program *program, StringVie
 		}
 	}}
 
-	return true; // @TODO: check for fails?
+	return success;
 }
 
 u32
@@ -981,11 +1012,18 @@ renderer_shader_program_update_uniform_locations( Renderer_Shader_Program *progr
 		// @Warning: uniform's name must be null-terminated!
 		// @TODO: Check for OpenGL errors
 		it.opengl_location = glGetUniformLocation( program->opengl_program, it.name.data );
-		updated += 1;
+		if ( it.opengl_location != -1 )
+			updated += 1;
+		else
+			log_error( "Failed to update Uniform '" StringViewFormat "' location of '" StringViewFormat "' shader program!",
+				StringViewArgument( it.name ),
+				StringViewArgument( program->name )
+			);
 	}}
 
-	log_debug( "Updated %u uniform locations of '" StringViewFormat "' shader program.",
+	log_debug( "Updated %u/%u uniform locations of '" StringViewFormat "' shader program.",
 		updated,
+		program->uniforms.size,
 		StringViewArgument( program->name )
 	);
 	return updated;
