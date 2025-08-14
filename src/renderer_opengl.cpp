@@ -1322,8 +1322,7 @@ renderer_set_active_framebuffer_color_attachment_points( Renderer_Framebuffer_ID
 
 	// Mark all color attachments as not active (depth/stencil is always active).
 	ForIt( framebuffer->attachments.data, framebuffer->attachments.size ) {
-		if ( it.attachment_point >= RendererFramebufferAttachmentPoint_Color0 &&
-			it.attachment_point <= g_renderer.opengl_max_color_attachments ) {
+		if ( renderer_framebuffer_color_attachment_point_is_valid( it.attachment_point ) ) {
 			// Color attachment, set as not active.
 			it.bits &= ~RendererFramebufferAttachmentBit_IsActive;
 		}
@@ -1339,7 +1338,7 @@ renderer_set_active_framebuffer_color_attachment_points( Renderer_Framebuffer_ID
 		}}
 
 		// Check whether there are non-color attachments.
-		Assert( it >= RendererFramebufferAttachmentPoint_Color0 && it <= g_renderer.opengl_max_color_attachments );
+		Assert( renderer_framebuffer_color_attachment_point_is_valid( it ) );
 
 		GLenum opengl_color_attachment = renderer_framebuffer_attachment_point_to_opengl( it );
 		// opengl_color_attachments[ attachment_idx ] = opengl_color_attachment;
@@ -1748,14 +1747,24 @@ renderer_texture_format_to_framebuffer_attachment_point( Texture_Format format )
 }
 
 bool
+renderer_framebuffer_color_attachment_point_is_valid( Renderer_Framebuffer_Attachment_Point color_attachment_point ) {
+	bool is_valid = (
+		color_attachment_point >= RendererFramebufferAttachmentPoint_Color0 &&
+		color_attachment_point <= g_renderer.gl_constants.max_color_attachments - 1
+	);
+	return is_valid;
+}
+
+bool
 renderer_texture_attach_to_framebuffer( Texture_ID texture_id, Renderer_Framebuffer_ID framebuffer_id, Renderer_Framebuffer_Attachment_Point attachment_point ) {
 	Texture *texture = texture_instance( texture_id );
 	Renderer_Framebuffer *framebuffer = renderer_framebuffer_instance( framebuffer_id );
 	Renderer_Framebuffer_Attachment_Point expected_attachment_point = renderer_texture_format_to_framebuffer_attachment_point( texture->format );
 	if ( expected_attachment_point == RendererFramebufferAttachmentPoint_Color0 ) {
 		// This is a Color attachment.
-		Assert( attachment_point >= RendererFramebufferAttachmentPoint_Color0 && attachment_point <= g_renderer.opengl_max_color_attachments - 1 );
-		if ( attachment_point < RendererFramebufferAttachmentPoint_Color0 && attachment_point > g_renderer.opengl_max_color_attachments - 1 )
+		bool is_valid_color_attachment = renderer_framebuffer_color_attachment_point_is_valid( attachment_point );
+		Assert( is_valid_color_attachment );
+		if ( !is_valid_color_attachment )
 			return false;
 	} else {
 		// This is a Depth / Stencil / DepthStencil attachment.

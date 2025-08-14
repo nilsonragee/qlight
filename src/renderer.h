@@ -320,6 +320,9 @@ Renderer_Framebuffer_Attachment_Point
 renderer_texture_format_to_framebuffer_attachment_point( Texture_Format format );
 
 bool
+renderer_framebuffer_color_attachment_point_is_valid( Renderer_Framebuffer_Attachment_Point color_attachment_point );
+
+bool
 renderer_texture_attach_to_framebuffer( Texture_ID texture_id, Renderer_Framebuffer_ID framebuffer_id, Renderer_Framebuffer_Attachment_Point attachment_point );
 
 bool
