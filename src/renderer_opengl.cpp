@@ -25,6 +25,14 @@ struct Geometry_Buffer {
 	Renderer_Renderbuffer_ID renderbuffer_depth_stencil;  // 24-bit depth, 8-bit stencil combined
 };
 
+struct GL_Constants {
+	u32 max_color_attachments;
+	u32 max_uniform_block_size;
+	u32 max_uniform_locations;
+	u32 max_uniform_buffer_bindings;
+	u32 min_map_buffer_alignment;
+};
+
 struct G_Renderer {
 	struct Frame_Time {
 		f32 last;
@@ -64,7 +72,7 @@ struct G_Renderer {
 	Renderer_Output_Channel output_channel;
 
 	// OpenGL-specific:
-	u32 opengl_max_color_attachments;
+	GL_Constants gl_constants;
 	/*
 		OpenGL definition of glUniformMatrixNxM: 'The first number in the
 			command name is the number of columns; the second is the number of rows.'
@@ -621,6 +629,24 @@ opengl_debug_message_callback(
 	);
 }
 
+inline static u32
+opengl_query_constant_as_u32( GLint constant, GLint *out_gl_result ) {
+	glGetIntegerv( constant, out_gl_result );
+	return ( u32 ) *out_gl_result;
+}
+
+static void
+opengl_query_constants() {
+	GL_Constants *gl = &g_renderer.gl_constants;
+	GLint gl_result;
+
+	gl->max_color_attachments       = opengl_query_constant_as_u32( GL_MAX_COLOR_ATTACHMENTS, &gl_result );
+	gl->max_uniform_block_size      = opengl_query_constant_as_u32( GL_MAX_UNIFORM_BLOCK_SIZE, &gl_result );
+	gl->max_uniform_locations       = opengl_query_constant_as_u32( GL_MAX_UNIFORM_LOCATIONS, &gl_result );
+	gl->max_uniform_buffer_bindings = opengl_query_constant_as_u32( GL_MAX_UNIFORM_BUFFER_BINDINGS, &gl_result );
+	gl->min_map_buffer_alignment    = opengl_query_constant_as_u32( GL_MIN_MAP_BUFFER_ALIGNMENT, &gl_result );
+}
+
 bool
 renderer_init() {
 	log_debug( "Initializing Renderer..." );
@@ -661,9 +687,7 @@ renderer_init() {
 	g_renderer.stages = array_new< Renderer_Shader_Stage >( sys_allocator, RENDERER_INITIAL_STAGES_CAPACITY );
 	g_renderer.uniform_buffers = array_new< Renderer_Uniform_Buffer >( sys_allocator, RENDERER_INITIAL_UNIFORM_BUFFERS_CAPACITY );
 
-	GLint gl_result = 0;
-	glGetIntegerv( GL_MAX_COLOR_ATTACHMENTS, &gl_result );
-	g_renderer.opengl_max_color_attachments = gl_result;
+	opengl_query_constants();
 
 	g_renderer.device.vendor = string_view( ( const char * )glGetString( GL_VENDOR ) );
 	g_renderer.device.name = string_view( ( const char * )glGetString( GL_RENDERER ) );
@@ -1285,8 +1309,8 @@ renderer_is_framebuffer_complete( Renderer_Framebuffer_ID framebuffer_id ) {
 
 void
 renderer_set_active_framebuffer_color_attachment_points( Renderer_Framebuffer_ID framebuffer_id, ArrayView< Renderer_Framebuffer_Attachment_Point > color_attachment_points ) {
-	if ( color_attachment_points.size > g_renderer.opengl_max_color_attachments ) {
-		Assert( color_attachment_points.size > g_renderer.opengl_max_color_attachments );
+	if ( color_attachment_points.size > g_renderer.gl_constants.max_color_attachments ) {
+		Assert( color_attachment_points.size > g_renderer.gl_constants.max_color_attachments );
 		return;
 	}
 
