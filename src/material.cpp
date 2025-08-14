@@ -59,7 +59,7 @@ Material_ID material_create(
 	Material_ID material_id = array_add( &g_materials.materials, material );
 	g_materials.created += 1;
 	log_debug(
-		"Created '" StringViewFormat "' (#%u, '" StringViewFormat "', diffuse: #%u, normal: #%u, specular: #%u, shininess: %.f).",
+		"Created '" StringViewFormat "' (#%u, '" StringViewFormat "', diffuse: #%u, normal: #%u, specular: #%u, shininess: %.1f).",
 		StringViewArgument( material.name ),
 		material_id,
 		StringViewArgument( material.shader_program->name ),

@@ -188,7 +188,7 @@ Model_ID model_load_from_file( StringView_ASCII name, StringView_ASCII file_path
 	u32 model_idx = array_add( &g_models.models, model );
 
 	aiReleaseImport( scene );
-	log_info( "Loaded Model '" StringViewFormat "' (#%u, %u vertices, %u indices).",
+	log_info( "Loaded '" StringViewFormat "' (#%u, %u vertices, %u indices).",
 		StringViewArgument( name ),
 		model_idx,
 		mesh.vertices.size,

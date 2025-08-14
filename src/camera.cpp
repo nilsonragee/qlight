@@ -63,7 +63,7 @@ camera_create(
 	u32 camera_idx = array_add( &g_cameras.cameras, camera );
 	StringView_ASCII projection_name = ( is_orthographic ) ? "Orthographic" : "Perspective";
 	log_info(
-		"Created '" StringViewFormat "' (#%u, '" StringViewFormat "', %.fx%.f, ortho_size: %.1f, fov: %.1f, z_near: %.3f, z_far: %.1f).",
+		"Created '" StringViewFormat "' (#%u, " StringViewFormat ", %.fx%.f, ortho_size: %.1f, fov: %.1f, z_near: %.3f, z_far: %.1f).",
 		StringViewArgument( camera.name ),
 		camera_idx,
 		StringViewArgument( projection_name ),
