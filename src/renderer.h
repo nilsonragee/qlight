@@ -37,6 +37,47 @@ enum ERenderer_Shader_Kind_Bits : u32 {
 };
 typedef u32 Renderer_Shader_Kind_Bits;
 
+enum Renderer_GL_Buffer_Usage : GLenum {
+	RendererGLBufferUsage_None = 0,
+
+	RendererGLBufferUsage_StreamDraw = GL_STREAM_DRAW,
+	RendererGLBufferUsage_StreamRead = GL_STREAM_READ,
+	RendererGLBufferUsage_StreamCopy = GL_STREAM_COPY,
+
+	RendererGLBufferUsage_StaticDraw = GL_STATIC_DRAW,
+	RendererGLBufferUsage_StaticRead = GL_STATIC_READ,
+	RendererGLBufferUsage_StaticCopy = GL_STATIC_COPY,
+
+	RendererGLBufferUsage_DynamicDraw = GL_DYNAMIC_DRAW,
+	RendererGLBufferUsage_DynamicRead = GL_DYNAMIC_READ,
+	RendererGLBufferUsage_DynamicCopy = GL_DYNAMIC_COPY
+};
+
+// More into at: `docs.gl/gl4/glMapBufferRange`
+enum Renderer_GL_Map_Access_Bits : GLbitfield {
+	RendererGLMapAccessBit_None = 0,
+
+	RendererGLMapAccessBit_Read = GL_MAP_READ_BIT,
+	RendererGLMapAccessBit_Write = GL_MAP_WRITE_BIT,
+	RendererGLMapAccessBit_ReadWrite = GL_MAP_READ_BIT | GL_MAP_WRITE_BIT,
+	RendererGLMapAccessBit_Persistent = GL_MAP_PERSISTENT_BIT,
+	RendererGLMapAccessBit_Coherent = GL_MAP_COHERENT_BIT,
+
+	// Optional
+	RendererGLMapAccessBit_InvalidateRange = GL_MAP_INVALIDATE_RANGE_BIT,
+	RendererGLMapAccessBit_InvalidateBuffer = GL_MAP_INVALIDATE_BUFFER_BIT,
+	RendererGLMapAccessBit_FlushExplicit = GL_MAP_FLUSH_EXPLICIT_BIT,
+	RendererGLMapAccessBit_Unsynchronized = GL_MAP_UNSYNCHRONIZED_BIT
+};
+
+enum Renderer_GL_Buffer_Access_Mode : GLenum {
+	RendererGLBufferAccessMode_None = 0,
+
+	RendererGLBufferAccessMode_Read = GL_READ_ONLY,
+	RendererGLBufferAccessMode_Write = GL_WRITE_ONLY,
+	RendererGLBufferAccessMode_ReadWrite = GL_READ_WRITE
+};
+
 enum Renderer_Data_Type : u32 {
 	RendererDataType_s8 = 0,
 	RendererDataType_u8,
@@ -99,8 +140,9 @@ struct Renderer_Uniform {
 typedef void UBO_Struct;
 struct Renderer_Uniform_Buffer {
 	StringView_ASCII name;
-	ArrayView< u8 > data;
+	u32 size;
 	u32 binding;
+	Renderer_GL_Buffer_Usage usage;
 
 	// OpenGL-specific:
 	GLuint opengl_ubo;
@@ -112,8 +154,9 @@ struct Renderer_Shader_Program {
 	Renderer_Shader_Stage      *shaders[ RendererShaderKind_COUNT ]; // stages
 	Renderer_Shader_Kind_Bits  linked_shaders;
 
-	Array< Renderer_Vertex_Attribute > vertex_attributes;
+	Array< Renderer_Vertex_Attribute > vertex_attributes; // Shader-bound declaration info. Read only.
 	Array< Renderer_Uniform > uniforms;
+	Array< Renderer_Uniform_Buffer > uniform_buffers; // Shader-bound declaration info. Read only.
 
 	// OpenGL-specific:
 	GLuint opengl_program;
@@ -359,37 +402,27 @@ Texture_ID
 renderer_texture_purple_checkers();
 
 Renderer_Uniform_Buffer *
-renderer_uniform_buffer_create( StringView_ASCII name, ArrayView< u8 > data, u32 binding = INVALID_UNIFORM_BUFFER_BINDING );
-
-enum Renderer_Uniform_Buffer_Access_Mode : u8 {
-	RendererUniformBufferAccessMode_None = 0,
-	RendererUniformBufferAccessMode_Read,
-	RendererUniformBufferAccessMode_Write,
-	RendererUniformBufferAccessMode_ReadWrite
-};
-
-GLenum
-renderer_uniform_buffer_access_mode_to_opengl( Renderer_Uniform_Buffer_Access_Mode access_mode );
+renderer_uniform_buffer_create( StringView_ASCII name, u32 size, Renderer_GL_Buffer_Usage usage, u32 binding = INVALID_UNIFORM_BUFFER_BINDING );
 
 void
 renderer_uniform_buffer_set_binding( Renderer_Uniform_Buffer *uniform_buffer, u32 binding );
 
 void *
-renderer_uniform_buffer_memory_map( Renderer_Uniform_Buffer *uniform_buffer, Renderer_Uniform_Buffer_Access_Mode access_mode, u32 size = 0, u32 offset = 0 );
+renderer_uniform_buffer_memory_map( Renderer_Uniform_Buffer *uniform_buffer, Renderer_GL_Map_Access_Bits access_bits, u32 size = 0, u32 offset = 0 );
 
 inline void *
 renderer_uniform_buffer_memory_map_for_read( Renderer_Uniform_Buffer *uniform_buffer, u32 size = 0, u32 offset = 0 ) {
-	return renderer_uniform_buffer_memory_map( uniform_buffer, RendererUniformBufferAccessMode_Read, size, offset );
+	return renderer_uniform_buffer_memory_map( uniform_buffer, RendererGLMapAccessBit_Read, size, offset );
 }
 
 inline void *
 renderer_uniform_buffer_memory_map_for_write( Renderer_Uniform_Buffer *uniform_buffer, u32 size = 0, u32 offset = 0 ) {
-	return renderer_uniform_buffer_memory_map( uniform_buffer, RendererUniformBufferAccessMode_Write, size, offset );
+	return renderer_uniform_buffer_memory_map( uniform_buffer, RendererGLMapAccessBit_Write, size, offset );
 }
 
 inline void *
 renderer_uniform_buffer_memory_map_for_read_write( Renderer_Uniform_Buffer *uniform_buffer, u32 size = 0, u32 offset = 0 ) {
-	return renderer_uniform_buffer_memory_map( uniform_buffer, RendererUniformBufferAccessMode_ReadWrite, size, offset );
+	return renderer_uniform_buffer_memory_map( uniform_buffer, RendererGLMapAccessBit_ReadWrite, size, offset );
 }
 
 bool

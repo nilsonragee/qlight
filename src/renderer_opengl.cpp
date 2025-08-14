@@ -871,9 +871,6 @@ renderer_load_shader_stage( StringView_ASCII name, Renderer_Shader_Kind kind, St
 	return stage_ptr;
 }
 
-constexpr u32 SHADER_PROGRAM_UNIFORMS_INITIAL_CAPACITY = 8;
-constexpr u32 SHADER_PROGRAM_VERTEX_ATTRIBUTES_INITIAL_CAPACITY = 6;
-
 Renderer_Shader_Kind_Bits
 renderer_shader_kind_bit( Renderer_Shader_Kind kind ) {
 	switch ( kind ) {
@@ -888,6 +885,10 @@ renderer_shader_kind_bit( Renderer_Shader_Kind kind ) {
 	};
 }
 
+constexpr u32 SHADER_PROGRAM_VERTEX_ATTRIBUTES_INITIAL_CAPACITY = 6;
+constexpr u32 SHADER_PROGRAM_UNIFORMS_INITIAL_CAPACITY = 8;
+constexpr u32 SHADER_PROGRAM_UNIFORM_BUFFERS_INITIAL_CAPACITY = 1;
+
 Renderer_Shader_Program *
 renderer_create_and_compile_shader_program( StringView_ASCII name, ArrayView< Renderer_Shader_Stage * > shader_stages ) {
 	log_debug( "Creating and compiling '" StringViewFormat "' shader program...",
@@ -896,7 +897,8 @@ renderer_create_and_compile_shader_program( StringView_ASCII name, ArrayView< Re
 	Renderer_Shader_Program program = {
 		.name = name,
 		.vertex_attributes = array_new< Renderer_Vertex_Attribute >( sys_allocator, SHADER_PROGRAM_VERTEX_ATTRIBUTES_INITIAL_CAPACITY ),
-		.uniforms = array_new< Renderer_Uniform >( sys_allocator, SHADER_PROGRAM_UNIFORMS_INITIAL_CAPACITY )
+		.uniforms = array_new< Renderer_Uniform >( sys_allocator, SHADER_PROGRAM_UNIFORMS_INITIAL_CAPACITY ),
+		.uniform_buffers = array_new< Renderer_Uniform_Buffer >( sys_allocator, SHADER_PROGRAM_UNIFORM_BUFFERS_INITIAL_CAPACITY )
 	};
 
 	GL_CHECK( program.opengl_program = glCreateProgram() );
@@ -1995,11 +1997,12 @@ renderer_texture_purple_checkers() {
 }
 
 static void
-opengl_create_uniform_buffer( GLuint *id, GLsizeiptr size, GLuint binding, GLenum usage, StringView_ASCII debug_name ) {
+opengl_create_and_bind_uniform_buffer( GLuint *id, GLsizeiptr size, GLuint binding, GLenum usage, StringView_ASCII debug_name ) {
 	glGenBuffers( 1, id );
+	glBindBuffer( GL_UNIFORM_BUFFER, *id );
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
-		glObjectLabel( GL_UNIFORM_BUFFER, *id, debug_name.size, debug_name.data );
+		glObjectLabel( GL_BUFFER, *id, debug_name.size, debug_name.data );
 	log_debug_gl( "Created and bound Uniform Buffer '" StringViewFormat "' (#%u).",
 		StringViewArgument( debug_name ),
 		*id
@@ -2014,17 +2017,16 @@ opengl_create_uniform_buffer( GLuint *id, GLsizeiptr size, GLuint binding, GLenu
 }
 
 Renderer_Uniform_Buffer *
-renderer_uniform_buffer_create( StringView_ASCII name, ArrayView< u8 > data, u32 binding ) {
+renderer_uniform_buffer_create( StringView_ASCII name, u32 size, Renderer_GL_Buffer_Usage usage, u32 binding ) {
 	Renderer_Uniform_Buffer _uniform_buffer = {
 		.name = name,
-		.data = data,
-		.binding = binding
+		.size = size,
+		.binding = binding,
+		.usage = usage
 		// .opengl_ubo
 	};
 
-	// TODO: Make it configurable.
-	GLenum opengl_usage = GL_DYNAMIC_DRAW;
-	opengl_create_uniform_buffer( &_uniform_buffer.opengl_ubo, data.size, binding, opengl_usage, name );
+	opengl_create_and_bind_uniform_buffer( &_uniform_buffer.opengl_ubo, size, binding, usage, name );
 
 	u32 buffer_idx = array_add( &g_renderer.uniform_buffers, _uniform_buffer );
 	Renderer_Uniform_Buffer *uniform_buffer = &g_renderer.uniform_buffers.data[ buffer_idx ];
@@ -2033,19 +2035,6 @@ renderer_uniform_buffer_create( StringView_ASCII name, ArrayView< u8 > data, u32
 		renderer_uniform_buffer_set_binding( uniform_buffer, binding );
 
 	return uniform_buffer;
-}
-
-GLenum
-renderer_uniform_buffer_access_mode_to_opengl( Renderer_Uniform_Buffer_Access_Mode access_mode ) {
-	switch ( access_mode ) {
-
-		case RendererUniformBufferAccessMode_Read:  return GL_READ_ONLY;
-		case RendererUniformBufferAccessMode_Write:  return GL_WRITE_ONLY;
-		case RendererUniformBufferAccessMode_ReadWrite:  return GL_READ_WRITE;
-
-		case RendererUniformBufferAccessMode_None:
-		default:  return GL_INVALID_ENUM;
-	};
 }
 
 void
@@ -2062,17 +2051,19 @@ renderer_uniform_buffer_set_binding( Renderer_Uniform_Buffer *uniform_buffer, u3
 void *
 renderer_uniform_buffer_memory_map(
 	Renderer_Uniform_Buffer *uniform_buffer,
-	Renderer_Uniform_Buffer_Access_Mode access_mode,
+	Renderer_GL_Map_Access_Bits access_bits,
 	u32 size,
 	u32 offset
 ) {
-	GLenum opengl_access_mode = renderer_uniform_buffer_access_mode_to_opengl( access_mode );
+	u32 length = ( size != 0 ) ? size : uniform_buffer->size - offset;
+	Assert( offset < uniform_buffer->size );
 	void *uniform_data = glMapNamedBufferRange(
 		/* buffer */ uniform_buffer->opengl_ubo,
 		/* offset */ offset,
-		/* length */ size,
-		/* access */ opengl_access_mode
+		/* length */ length,
+		/* access */ access_bits
 	);
+
 	return uniform_data;
 }
 
@@ -2081,10 +2072,10 @@ renderer_uniform_buffer_write( Renderer_Uniform_Buffer *uniform_buffer, ArrayVie
 	if ( !write_data.data || write_data.size == 0 )
 		return 0;
 
-	Assert( size <= uniform_buffer->data.size - offset );
+	Assert( size <= uniform_buffer->size - offset );
 	u32 write_size = size;
 	if ( size == 0 )
-		write_size = uniform_buffer->data.size - offset;
+		write_size = uniform_buffer->size - offset;
 
 	u8 *uniform_data = ( u8 * )renderer_uniform_buffer_memory_map_for_write( uniform_buffer, write_size, offset );
 	memcpy( uniform_data, write_data.data, write_size );
@@ -2097,11 +2088,11 @@ renderer_uniform_buffer_read( Renderer_Uniform_Buffer *uniform_buffer, Array< u8
 	if ( !out_read_data )
 		return 0;
 
-	Assert( size <= uniform_buffer->data.size - offset );
+	Assert( size <= uniform_buffer->size - offset );
 	ArrayView< u8 > read_view;
 	read_view.size = size;
 	if ( size == 0 )
-		read_view.size = uniform_buffer->data.size - offset;
+		read_view.size = uniform_buffer->size - offset;
 
 	read_view.data = ( u8 * )renderer_uniform_buffer_memory_map_for_read( uniform_buffer, size, offset );
 	u32 bytes_read = array_add_many( out_read_data, read_view );
