@@ -12,9 +12,13 @@ enum Entity_Type : u16 {
 	EntityType_StaticObject,
 	EntityType_DynamicObject,
 
+	EntityType_DirectionalLight,
+	EntityType_PointLight,
+	EntityType_SpotLight,
+
 	EntityType_COUNT,
 
-	EntityType_Unknown = U16_MAX,
+	EntityType_None = U16_MAX,
 };
 
 enum EEntity_Bits : u32 {
@@ -34,11 +38,29 @@ struct Entity {
 
 struct Entity_Player : Entity {
 	String_ASCII name;
-	Model_ID model;
+};
+
+struct Entity_Camera : Entity {
+	String_ASCII name;
+	Camera camera;
 };
 
 struct Entity_Static_Object : Entity {
 	Model_ID model;
+};
+
+struct Entity_Dynamic_Object : Entity {
+	Model_ID model;
+};
+
+struct Entity_Directional_Light : Entity {
+	Vector3_f32 color;
+	f32 intensity;
+};
+
+struct Entity_Point_Light : Entity {
+	Vector3_f32 color;
+	f32 intensity;
 };
 
 #endif /* QLIGHT_ENTITY_H */
