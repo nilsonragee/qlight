@@ -29,6 +29,12 @@ inline u8 * carray_at(CArray *array, u32 index) {
 	return &array->data[ index * array->item_size ];
 };
 
+inline u32 carray_index_of(CArray *array, void *item) {
+	u32 memory_offset = ( u32 )( ( u8 * )item - ( u8 * )array->data );
+	u32 index = memory_offset / array->item_size;
+	return index;
+};
+
 // count = 0 -- means count to the end of the array's size.
 CArrayView get_carray_view(CArray *array, u32 offset = 0, u32 count = 0);
 CArrayView carray_view(CArray *array, u32 offset = 0, u32 count = 0);
@@ -49,6 +55,8 @@ void   carray_clear(CArray *array, bool zero_memory = false);
 bool   carray_free(CArray *array);
 bool   carray_contains(CArray *array, void *item);
 void * carray_find(CArray *array, void *item);
+void   carray_remove_at_pointer(CArray *array, void *item);
+void   carray_remove_at_index(CArray *array, u32 index);
 
 } /* extern "C" */
 

@@ -197,3 +197,33 @@ void * carray_find(CArray *array, void *item) {
     }
     return nullptr;
 }
+
+bool carray_remove(CArray *array, void *item) {
+	void *array_item = carray_find( array, item );
+	if ( !array_item )
+		return false;
+
+	memset( array_item, 0, array->item_size );
+	return true;
+}
+
+void carray_remove_at_pointer(CArray *array, void *array_item) {
+	bool in_min_bounds = ( array_item >= array->data );
+	bool in_max_bounds = ( array_item < ( array->data + array->size * array->item_size ) );
+	Assert( in_min_bounds && in_max_bounds );
+	if ( !in_min_bounds || !in_max_bounds )
+		return;
+
+	memset( array_item, 0, array->item_size );
+}
+
+void carray_remove_at_index(CArray *array, u32 index) {
+	bool in_min_bounds = ( index >= 0 );
+	bool in_max_bounds = ( index < array->size );
+	Assert( in_min_bounds && in_max_bounds );
+	if ( !in_min_bounds || !in_max_bounds )
+		return;
+
+	void *array_item = carray_at( array, index );
+	memset( array_item, 0, array->item_size );
+}
