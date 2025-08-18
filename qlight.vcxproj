@@ -112,6 +112,7 @@
     <ClCompile Include="src\carray.cpp" />
     <ClCompile Include="src\common.cpp" />
     <ClCompile Include="src\console.cpp" />
+    <ClCompile Include="src\entity_table.cpp" />
     <ClCompile Include="src\log.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\map.cpp" />
@@ -142,6 +143,7 @@
     <ClInclude Include="src\common.h" />
     <ClInclude Include="src\console.h" />
     <ClInclude Include="src\entity.h" />
+    <ClInclude Include="src\entity_table.h" />
     <ClInclude Include="src\log.h" />
     <ClInclude Include="src\map.h" />
     <ClInclude Include="src\material.h" />
