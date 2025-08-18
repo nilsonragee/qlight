@@ -6,6 +6,7 @@
 #include "carray.h"
 #include "model.h"
 #include "entity.h"
+#include "entity_table.h"
 
 enum Map_State : u32 {
 	MapState_NotLoaded = 0,
@@ -30,8 +31,8 @@ struct Map {
 	StringView_ASCII description;
 	StringView_ASCII file_path;
 
-	// CArray entity_storages[ EntityType_COUNT ];
-	Array< Entity_ID > entities;
+	CArray entity_storages[ EntityType_COUNT ];
+	Entity_Lookup_Table entity_table;
 	Map_State state;
 	// Array< Entity > entities;
 	// Array< Player > players;
@@ -58,5 +59,8 @@ void map_draw( Map *map );
 
 Map * map_current();
 Map * map_changing_to();
+
+Entity_ID map_entity_add( Map *map, Entity *entity );
+bool map_entity_remove( Map *map, Entity_ID entity_id );
 
 #endif /* QLIGHT_MAP */

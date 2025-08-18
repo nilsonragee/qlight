@@ -1,11 +1,35 @@
 #include "map.h"
 #include "renderer.h"
 
-struct {
+struct G_Maps {
 	Array< Map > maps;
 	Map *current;
 	Map *changing_to;
 } g_maps;
+
+static void
+entity_storages_free( Map *map ) {
+	carray_free( &map->entity_storages[ EntityType_Player ] );
+	carray_free( &map->entity_storages[ EntityType_Camera ] );
+	carray_free( &map->entity_storages[ EntityType_StaticObject ] );
+	carray_free( &map->entity_storages[ EntityType_DynamicObject ] );
+
+	carray_free( &map->entity_storages[ EntityType_DirectionalLight ] );
+	carray_free( &map->entity_storages[ EntityType_PointLight ] );
+	carray_free( &map->entity_storages[ EntityType_SpotLight ] );
+}
+
+static void
+entity_storages_init( Map *map ) {
+	map->entity_storages[ EntityType_Player ] = carray_new( sys_allocator, sizeof( Entity_Player ), 2 );
+	map->entity_storages[ EntityType_Camera ] = carray_new( sys_allocator, sizeof( Entity_Camera ), 2 );
+	map->entity_storages[ EntityType_StaticObject ] = carray_new( sys_allocator, sizeof( Entity_Static_Object ), 16 );
+	map->entity_storages[ EntityType_DynamicObject ] = carray_new( sys_allocator, sizeof( Entity_Dynamic_Object ), 8 );
+
+	map->entity_storages[ EntityType_DirectionalLight ] = carray_new( sys_allocator, sizeof( Entity_Directional_Light ), 2 );
+	map->entity_storages[ EntityType_PointLight ] = carray_new( sys_allocator, sizeof( Entity_Point_Light ), 8 );
+	map->entity_storages[ EntityType_SpotLight ] = carray_new( sys_allocator, sizeof( Entity_Point_Light ), 4 );
+}
 
 bool maps_init() {
 	if ( g_maps.maps.data )
@@ -21,26 +45,26 @@ bool maps_init() {
 		.description = "",
 		.file_path = "",
 		// .models = array_new< Model_ID >( sys_allocator, 1 ),
-		.entities = array_new< Entity_ID >( sys_allocator, 1 ),
+		// .entities = array_new< Entity_ID >( sys_allocator, 1 ),
 		.state = MapState_Loaded
 	};
 	u32 map_empty_idx = array_add( &g_maps.maps, map_empty );
+	Map *map = &g_maps.maps.data[ map_empty_idx ];
+	entity_storages_init( map );
+	entity_table_init( &map->entity_table, sys_allocator, 32 );
 
 	Map map_test = {
 		.name = "test",
 		.title = "Test Map",
 		.description = "",
 		.file_path = "test.map",
-		.entities = array_new< Entity_ID >( sys_allocator, 16 ),
+		// .entities = array_new< Entity_ID >( sys_allocator, 16 ),
 		.state = MapState_NotLoaded
 	};
-	/*
-	for ( Entity_Type entity_type = 0; entity_type < EntityType_COUNT; entity_type += 1 ) {
-		Array< Entity_ID > *array = &map_test.entities[ entity_type ];
-		*array = array_new< Entity_ID >( sys_allocator, 8 );
-	}
-	*/
 	u32 map_test_idx = array_add( &g_maps.maps, map_test );
+	map = &g_maps.maps.data[ map_test_idx ];
+	entity_storages_init( map );
+	entity_table_init( &map->entity_table, sys_allocator, 32 );
 
 	// This is so we do not dereference NULL pointer on first change.
 	g_maps.current = &g_maps.maps.data[ map_empty_idx ];
@@ -52,6 +76,10 @@ void maps_shutdown() {
 	if ( !g_maps.maps.data )
 		return;
 
+	ForIt( g_maps.maps.data, g_maps.maps.size ) {
+		entity_storages_free( &it );
+		entity_table_destroy( &it.entity_table );
+	}}
 	array_free( &g_maps.maps );
 }
 
@@ -189,4 +217,39 @@ Map * map_current() {
 
 Map * map_changing_to() {
 	return g_maps.changing_to;
+}
+
+Entity_ID
+map_entity_add( Map *map, Entity *entity ) {
+	// 1. Store `Entity` in an entity storage of that `Entity_Type`.
+	CArray *entity_storage = &map->entity_storages[ entity->type ];
+	u32 storage_idx = carray_add( entity_storage, entity );
+	Entity *storage_entity = ( Entity * )carray_at( entity_storage, storage_idx );
+	Assert( memcmp( storage_entity, entity, sizeof( Entity ) ) == 0 );
+
+	// 2. Add reference to that stored `Entity` to the map's `Entity_Lookup_Table`.
+	Entity_ID entity_id = entity_table_add( &map->entity_table, storage_entity );
+	return entity_id;
+}
+
+bool
+map_entity_remove( Map *map, Entity_ID entity_id ) {
+	if ( entity_id == INVALID_ENTITY_ID )
+		return false;
+
+	// 1. Find the reference of `Entity` in `Entity_Lookup_Table`.
+	// It is not removed right away with `entity_table_remove` because
+	//   the entity has to be removed from the entity storage first.
+	//   (right now it is 'removed' via clearing - setting data with zeroes)
+	Entity_Lookup_Table *table = &map->entity_table;
+	Entity *entity = entity_table_find( table, entity_id );
+	if ( !entity )
+		return false;
+
+	// 2. Remove `Entity` from the entity storage of that `Entity_Type`.
+	CArray *entity_storage = &map->entity_storages[ entity->type ];
+	carray_remove_at_pointer( entity_storage, entity );
+
+	bool removed = entity_table_remove( table, entity_id );
+	return removed;
 }
