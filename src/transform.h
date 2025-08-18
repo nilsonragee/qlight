@@ -8,6 +8,7 @@
 #include "../libs/GLM/gtc/matrix_transform.hpp"
 
 typedef Vector4_f32 Quaternion;
+typedef Vector4_f32_XYZW Quaternion_XYZW;
 
 struct Transform {
 	Vector3_f32 position;
@@ -19,6 +20,18 @@ struct Transform {
 	// "Dirty" flag is contained in model_matrix[ 0 ][ 3 ] as INFINITY value. (1-st column, 4-th row)
 	Matrix4x4_f32 model_matrix;
 	Matrix3x3_f32 normal_matrix;
+};
+
+struct Transform_XYZW {
+	Vector3_f32_XYZ position;
+	Quaternion_XYZW rotation;
+	Vector3_f32_XYZ scale;
+
+	// Cached matrices.
+	// WARNING: Please do not use directly.
+	// "Dirty" flag is contained in model_matrix[ 0 ][ 3 ] as INFINITY value. (1-st column, 4-th row)
+	Matrix4x4_f32_XYZW model_matrix;
+	Matrix3x3_f32_XYZ normal_matrix;
 };
 
 Quaternion quaternion_identity();
