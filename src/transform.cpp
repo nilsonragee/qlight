@@ -46,6 +46,9 @@ static void place_matrix3x3_into_matrix4x4( Matrix3x3_f32 *a, Matrix4x4_f32 *b )
 }
 
 void transform_recalculate_matrices( Transform *transform ) {
+	// model_matrix[ 0 ][ 3 ]  INFINITY -> 0.0
+	transform_set_dirty( transform, false );
+
 	Matrix3x3_f32 rotation = quaternion_to_rotation_matrix( transform->rotation ); // Vector4 -> Matrix3x3
 	// Turn scale to Matrix3x3 ?
 	Matrix3x3_f32 rotation_scale = rotation;
@@ -60,7 +63,7 @@ void transform_recalculate_matrices( Transform *transform ) {
 	*/
 
 	place_matrix3x3_into_matrix4x4( &rotation_scale, &transform->model_matrix );
-	transform_matrix_translate( &transform->model_matrix, transform->position );
+	transform->model_matrix = transform_matrix_translate( &transform->model_matrix, transform->position );
 
 	/*
 	Matrix3x3_f32 normal_matrix;
@@ -84,9 +87,6 @@ void transform_recalculate_matrices( Transform *transform ) {
 	} else {
 		transform->normal_matrix = rotation;
 	}
-
-	// model_matrix[ 0 ][ 3 ]  INFINITY -> 0.0
-	transform_set_dirty( transform, false );
 
 	/*
 	model = transform_matrix_scale( &model, transform->scale );
@@ -174,7 +174,7 @@ Matrix4x4_f32 transform_matrix_rotate_quaternion( Matrix4x4_f32 *model, Quaterni
 }
 
 Matrix4x4_f32 transform_matrix_translate( Matrix4x4_f32 *model, Vector3_f32 position ) {
-	Matrix4x4_f32 result;
+	Matrix4x4_f32 result = Matrix4x4_f32( 1.0f );
 
 	Vector4_f32 direction_X = (*model)[ 0 ];
 	Vector4_f32 direction_Y = (*model)[ 1 ];
@@ -188,8 +188,8 @@ Matrix4x4_f32 transform_matrix_translate( Matrix4x4_f32 *model, Vector3_f32 posi
 	result[ 3 ] =
 		direction_X * position.x  +
 		direction_Y * position.y  +
-		direction_Z * position.z  +
-		model_position;
+		direction_Z * position.z;
+	result[ 3 ].w = 1.0f;
 
 	return result;
 }
