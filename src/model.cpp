@@ -178,7 +178,7 @@ Model_ID model_load_from_file( StringView_ASCII name, StringView_ASCII file_path
 
 	Model model = {
 		.name = name,
-		.transform = transform_create(),
+		.transform = transform_identity(),
 		.meshes = array_new< Mesh_ID >( sys_allocator, 1 )
 	};
 

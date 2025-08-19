@@ -12,7 +12,7 @@ Quaternion quaternion_identity() {
 	};
 }
 
-Transform transform_create() {
+Transform transform_identity() {
 	Transform transform = {
 		.position = Vector3_f32 {
 			.x = 0.0f,

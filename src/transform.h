@@ -35,7 +35,7 @@ struct Transform_XYZW {
 };
 
 Quaternion quaternion_identity();
-Transform transform_create();
+Transform transform_identity();
 Matrix4x4_f32 transform_model_matrix( Transform *transform );
 Matrix3x3_f32 transform_normal_matrix( Matrix4x4_f32 *model_matrix );
 void transform_recalculate_matrices( Transform *transform );
