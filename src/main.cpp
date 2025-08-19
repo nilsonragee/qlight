@@ -25,6 +25,7 @@ Screen screen;
 
 bool imgui_draw_edit_window = true;
 bool imgui_draw_demo_window = false;
+bool imgui_draw_entities_window = true;
 bool freeze_light_change = false;
 bool freeze_camera = false;
 
@@ -315,6 +316,27 @@ void create_materials() {
 	material_create( "rocks-medium", shader, diffuse, normal, specular );
 }
 
+// Not sure whether this is the right place...
+// The `Entity` header does not have any functions as well as a source file.
+// Maybe it would be moved there when there would be one.
+static StringView_ASCII
+entity_type_name( Entity_Type type ) {
+	switch ( type ) {
+		case EntityType_Player: return "Player";
+		case EntityType_Camera: return "Camera";
+		case EntityType_StaticObject: return "StaticObject";
+		case EntityType_DynamicObject: return "DynamicObject";
+
+		case EntityType_DirectionalLight: return "DirectionalLight";
+		case EntityType_PointLight: return "PointLight";
+		case EntityType_SpotLight: return "SpotLight";
+
+		case EntityType_COUNT:
+		case EntityType_None:
+		default: return ( const char * )NULL;
+	}
+}
+
 int main()
 {
 	console_init( CP_UTF8 );
@@ -546,19 +568,18 @@ int main()
 		if (imgui_draw_edit_window) {
 
 			ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
-			ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
+			ImGui::SetNextWindowCollapsed(false, ImGuiCond_FirstUseEver);
 			if (ImGui::Begin("Scene")) {
 				ImGui::Checkbox("Show demo window", &imgui_draw_demo_window);
-
 
 				ImGui::TextUnformatted("CAMERA:");
 
 				bool update_view = false;
 				bool update_projection = false;
-				update_view |= ImGui::DragFloat3("Position", &g_camera->position[ 0 ], 0.5f, -1000.0f, 1000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+				update_view |= ImGui::DragFloat3("Position", &g_camera->position[ 0 ], 0.5f, -1000.0f, 1000.0f, "%.1f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_NoRoundToFormat);
 				update_view |= ImGui::DragFloat4("Rotation (Quaternion)", &g_camera->rotation[ 0 ], 0.001f, -1.0f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 				update_projection |= ImGui::DragFloat("Orthographic Size (World units)", &g_camera->orthographic_size, 0.1f, 1.0f, 100.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
-				update_projection |= ImGui::DragFloat("Field of View", &g_camera->fov, 1.0f, 1.0f, 179.0f);
+				update_projection |= ImGui::DragFloat("Field of View", &g_camera->fov, 1.0f, 1.0f, 179.0f, "%.1f");
 				update_projection |= ImGui::DragFloat("Clip Distance Near", &g_camera->z_near, 0.01f, 0.01f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
 				update_projection |= ImGui::DragFloat("Clip Distance Far", &g_camera->z_far, 1.0f, 100.0f, 5000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
 				update_projection |= ImGui::DragFloat2("Viewport Dimensions", &g_camera->viewport[ 0 ], 10.0f, 100.0f, 8192.0f);
@@ -618,7 +639,57 @@ int main()
 				ImGui::Text("GPU Name: " StringViewFormat, StringViewArgument( renderer_device_name() ));
 				ImGui::Text("ImGui: Frametime: %.3f ms/frame (%.1f FPS)", 1000.0f / imgui_io.Framerate, imgui_io.Framerate);
 				ImGui::Text("Renderer: Frametime: %.3f ms/frame (%.1f FPS)", frame_time, 1000.0f / frame_time);
+			}
 
+			static int g_frame_idx = 1;
+			if ( g_frame_idx == 2 ) {
+				// The window's size is calculated right before the drawing, I think?
+				// So a simple temporary solution is to let it calculate and draw the 1-st frame,
+				//   and then get the actual size on the 2-nd frame.
+				// The frame counter should be in Renderer, increased internally after every `renderer_draw_frame()`.
+				ImVec2 window_pos = ImGui::GetWindowPos();
+				ImVec2 window_size = ImGui::GetWindowSize();
+				window_pos.x += window_size.x;
+				ImGui::SetNextWindowPos( window_pos, ImGuiCond_FirstUseEver );
+			}
+			g_frame_idx += 1;
+			ImGui::End();
+		}
+
+		if ( imgui_draw_entities_window ) {
+			if ( ImGui::Begin( "Entities", NULL, ImGuiWindowFlags_AlwaysAutoResize ) ) {
+				ForIt( map->entity_table.entities.data, map->entity_table.entities.size ) {
+					if ( it == NULL )
+						continue;
+
+					Entity_ID entity_id = map->entity_table.ids.data[ it_index ];
+					StringView_ASCII type_name = entity_type_name( it->type );
+					if ( ImGui::TreeNode( (void*)(intptr_t)it_index, "%hu: " StringViewFormat, entity_id, StringViewArgument( type_name ) ) ) {
+						ImGui::Text( "Type: " StringViewFormat, StringViewArgument( type_name ) );
+						ImGui::Text( "Parent: %hu", it->parent );
+						if ( ImGui::TreeNode( "Bits" ) ) {
+							ImGui::CheckboxFlags( "NoDraw", ( u32 * )&it->bits, EntityBit_NoDraw );
+
+							ImGui::TreePop();
+						}
+						if ( ImGui::TreeNode( "Transform" ) ) {
+							bool update = false;
+							Transform *t = &it->transform;
+							update |= ImGui::DragFloat3("Position", &t->position[ 0 ], 0.01f, -F32_MAX, F32_MAX, "%.1f", ImGuiSliderFlags_NoRoundToFormat);
+							update |= ImGui::DragFloat4("Rotation (Quaternion)", &t->rotation[ 0 ], 0.001f, -1.0f, 1.0f, "%.3f");
+							update |= ImGui::DragFloat3("Scale", &t->scale[ 0 ], 0.01f, 0.0f, 100.0f, "%.1f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_NoRoundToFormat);
+							if ( update )
+								transform_recalculate_matrices( &it->transform );
+
+							ImGui::TreePop();
+						}
+						if ( ImGui::Button( "Delete" ) ) {
+							map_entity_remove( map, entity_id );
+						}
+
+						ImGui::TreePop();
+					}
+				}}
 			}
 
 			ImGui::End();
