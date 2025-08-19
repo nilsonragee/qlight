@@ -416,16 +416,41 @@ int main()
 
 	Map *map = map_current();
 
+	Entity_Directional_Light entity_sunlight;
+	// Entity
+	entity_sunlight.type = EntityType_DirectionalLight;
+	entity_sunlight.parent = INVALID_ENTITY_ID;
+	entity_sunlight.bits = EntityBit_NoDraw;
+	entity_sunlight.transform = transform_identity();
+	// Entity_Directional_Light
+	entity_sunlight.color = { 244 / 255.0f, 233 / 255.0f, 155 / 255.0f };
+	entity_sunlight.intensity = 1.0f;
+	map_entity_add( map, &entity_sunlight );
+
+	Entity_Static_Object entity_cube;
+	// Entity
+	entity_cube.type = EntityType_StaticObject;
+	entity_cube.parent = INVALID_ENTITY_ID;
+	entity_cube.bits = 0;
+	entity_cube.transform = transform_identity();
+	// Entity_Static_Object
+	entity_cube.model = model_cube_id;
+	// entity_cube.transform.position += { 1, 0, 0 };
+	// transform_set_dirty( &entity_cube.transform, true );
+	map_entity_add( map, &entity_cube );
+
+	// map_entity_remove( map, Entity_ID entity_id );
+
 	g_camera = camera_create(
 		/*       name */ "Main Camera",
 		/* projection */ CameraProjection_Perspective,
-		/*   position */ Vector3_f32( 0.0f, 0.0f, -3.0f ),
+		/*   position */ { 0.0f, 0.0f, -3.0f },
 		/*   rotation */ quaternion_identity(),
 		/* ortho_size */ 5.0f,
 		/*        fov */ 80.0f,
 		/*     z_near */ 0.1f,
 		/*      z_far */ 2000.0f,
-		/*   viewport */ Vector2_f32( 1280.0f, 720.0f )
+		/*   viewport */ { 1280, 720 }
 	);
 
 	glViewport(
@@ -478,11 +503,31 @@ int main()
 
 		cameras_update();
 
-		renderer_queue_draw_command(
-			/*     mesh_id */ cube_mesh_id,
-			/* material_id */ cube_mesh->material_id,
-			/*   transform */ &model_cube->transform
-		);
+		// renderer_queue_draw_command(
+		// 	/*     mesh_id */ cube_mesh_id,
+		// 	/* material_id */ cube_mesh->material_id,
+		// 	/*   transform */ &model_cube->transform
+		// );
+		ForIt( map->entity_table.entities.data, map->entity_table.entities.size ) {
+			if ( it == NULL )
+				continue;
+
+			if ( it->bits & EntityBit_NoDraw )
+				continue;
+
+			if ( it->type == EntityType_StaticObject ) {
+				Entity_Static_Object *static_object = ( Entity_Static_Object * )it;
+				Model *model = model_instance( static_object->model );
+				Mesh *mesh = mesh_instance( model->meshes.data[ 0 ] );
+				transform_recalculate_dirty_matrices( &static_object->transform );
+				Transform_XYZW *transform_xyzw = ( Transform_XYZW * )&static_object->transform;
+				renderer_queue_draw_command(
+					/*     mesh_id */ model->meshes.data[ 0 ],
+					/* material_id */ mesh->material_id,
+					/*   transform */ &static_object->transform
+				);
+			}
+		}}
 
 		renderer_draw_frame();
 

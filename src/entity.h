@@ -4,6 +4,7 @@
 #include "common.h"
 #include "transform.h"
 #include "model.h"
+#include "camera.h"
 #include "math.h"
 
 enum Entity_Type : u16 {
