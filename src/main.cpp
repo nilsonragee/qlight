@@ -224,17 +224,17 @@ load_phong_lighting_shader() {
 
 	array_add( phong_uniforms, Renderer_Uniform {
 		.name = "gbuffer_position",
-		.data_type = RendererDataType_Matrix4x4_f32,
+		.data_type = RendererDataType_s32,
 	} );
 
 	array_add( phong_uniforms, Renderer_Uniform {
 		.name = "gbuffer_normal",
-		.data_type = RendererDataType_Matrix4x4_f32,
+		.data_type = RendererDataType_s32,
 	} );
 
 	array_add( phong_uniforms, Renderer_Uniform {
 		.name = "gbuffer_diffuse_specular",
-		.data_type = RendererDataType_Matrix4x4_f32,
+		.data_type = RendererDataType_s32,
 	} );
 
 	array_add( phong_uniforms, Renderer_Uniform {
@@ -247,17 +247,21 @@ load_phong_lighting_shader() {
 		.data_type = RendererDataType_Vector3_f32,
 	} );
 
-	array_add( phong_uniforms, Renderer_Uniform {
-		.name = "lights",
-		.data_type = RendererDataType_Vector3_f32,
-	} );
-
-	array_add( phong_uniforms, Renderer_Uniform {
-		.name = "shininess_exponent",
-		.data_type = RendererDataType_f32,
-	} );
-
 	renderer_shader_program_update_uniform_locations( shader );
+
+	/* Uniform Buffers */
+
+	Array< Renderer_Uniform_Buffer > *phong_uniform_buffers = &shader->uniform_buffers;
+
+	// Here we reconstruct shader-bound declaration info.
+	// Ideally, this should be done by some shader parser.
+	array_add( phong_uniform_buffers, Renderer_Uniform_Buffer {
+		.name = "Lights",
+		.size = sizeof( Uniform_Buffer_Lights ),
+		.binding = 0
+		// .storage_bits
+		// .opengl_ubo
+	} );
 }
 
 void load_shaders() {
@@ -427,53 +431,95 @@ int main()
 	create_materials();
 	cameras_init();
 
-	map_change( "empty" );
+	// map_change( "empty" ); // happens in `maps_init()`
 
 	Model_ID model_cube_id = model_load_from_file( "cube", "resources/models/cube.obj" );
 	renderer_model_meshes_upload( model_cube_id );
 	Model *model_cube = model_instance( model_cube_id );
 	Mesh_ID cube_mesh_id = model_cube->meshes.data[ 0 ];
 	Mesh *cube_mesh = mesh_instance( cube_mesh_id );
-	cube_mesh->material_id = material_find( "rocks-medium" );
+	cube_mesh->material_id = material_find( "bark" );
 
 	Map *map = map_current();
-
-	Entity_Directional_Light entity_sunlight;
-	// Entity
-	entity_sunlight.type = EntityType_DirectionalLight;
-	entity_sunlight.parent = INVALID_ENTITY_ID;
-	entity_sunlight.bits = EntityBit_NoDraw;
-	entity_sunlight.transform = transform_identity();
-	// Entity_Directional_Light
-	entity_sunlight.color = { 244 / 255.0f, 233 / 255.0f, 155 / 255.0f };
-	entity_sunlight.intensity = 1.0f;
-	map_entity_add( map, &entity_sunlight );
-
-	Entity_Static_Object entity_cube;
-	// Entity
-	entity_cube.type = EntityType_StaticObject;
-	entity_cube.parent = INVALID_ENTITY_ID;
-	entity_cube.bits = 0;
-	entity_cube.transform = transform_identity();
-	// Entity_Static_Object
-	entity_cube.model = model_cube_id;
-	// entity_cube.transform.position += { 1, 0, 0 };
-	// transform_set_dirty( &entity_cube.transform, true );
-	map_entity_add( map, &entity_cube );
-
-	// map_entity_remove( map, Entity_ID entity_id );
 
 	g_camera = camera_create(
 		/*       name */ "Main Camera",
 		/* projection */ CameraProjection_Perspective,
-		/*   position */ { 0.0f, 0.0f, -3.0f },
-		/*   rotation */ quaternion_identity(),
+		// /*   position */ { 0.0f, 0.0f, -3.0f },
+		/*   position */ { 3.1f, 2.0f, 2.7f },
+		// /*   rotation */ quaternion_identity(),
+		/*   rotation */ Quaternion( -0.102f, 0.882f, -0.226f, -0.401f ),
 		/* ortho_size */ 5.0f,
-		/*        fov */ 80.0f,
+		// /*        fov */ 80.0f,
+		/*        fov */ 40.0f,
 		/*     z_near */ 0.1f,
 		/*      z_far */ 2000.0f,
 		/*   viewport */ { 1280, 720 }
 	);
+
+	// Add some entities
+	{
+		Entity_Directional_Light entity_sunlight;
+		// Entity
+		entity_sunlight.type = EntityType_DirectionalLight;
+		entity_sunlight.parent = INVALID_ENTITY_ID;
+		entity_sunlight.bits = EntityBit_NoDraw;
+		entity_sunlight.transform = transform_identity();
+		entity_sunlight.transform.position.x = 100.0f;
+		entity_sunlight.transform.position.y = 100.0f;
+		entity_sunlight.transform.position.z = 10.0f;
+		// Entity_Directional_Light
+		entity_sunlight.color = { 244 / 255.0f, 233 / 255.0f, 155 / 255.0f };
+		entity_sunlight.intensity = 0.01f;
+		entity_sunlight.shininess_exponent = 16.0f;
+		map_entity_add( map, &entity_sunlight );
+
+		Entity_Point_Light entity_point_light;
+		// Entity
+		entity_point_light.type = EntityType_PointLight;
+		entity_point_light.parent = INVALID_ENTITY_ID;
+		entity_point_light.bits = EntityBit_NoDraw;
+		entity_point_light.transform = transform_identity();
+		entity_point_light.transform.position.y = 10.0f;
+		// Entity_Point_Light
+		entity_point_light.color = { 0.0f, 0.0f, 1.0f };
+		entity_point_light.intensity = 1.0f;
+		entity_point_light.shininess_exponent = 64.0f;
+		map_entity_add( map, &entity_point_light );
+
+		Entity_Camera entity_camera;
+		// Entity
+		entity_camera.type = EntityType_Camera;
+		entity_camera.parent = INVALID_ENTITY_ID;
+		entity_camera.bits = EntityBit_NoDraw;
+		entity_camera.transform = transform_identity();
+		// Entity_Camera
+		entity_camera.name = string_new( sys_allocator, "Main Camera" );
+		entity_camera.camera = g_camera;
+		Entity_ID entity_camera_id = map_entity_add( map, &entity_camera );
+
+		Entity_Camera entity_player;
+		// Entity
+		entity_player.type = EntityType_Player;
+		entity_player.parent = entity_camera_id;
+		entity_player.bits = 0;
+		entity_player.transform = transform_identity();
+		// Entity_Player
+		entity_player.name = string_new( sys_allocator, "Player" );;
+		map_entity_add( map, &entity_player );
+
+		Entity_Static_Object entity_cube;
+		// Entity
+		entity_cube.type = EntityType_StaticObject;
+		entity_cube.parent = INVALID_ENTITY_ID;
+		entity_cube.bits = 0;
+		entity_cube.transform = transform_identity();
+		// Entity_Static_Object
+		entity_cube.model = model_cube_id;
+		// entity_cube.transform.position += { 1, 0, 0 };
+		// transform_set_dirty( &entity_cube.transform, true );
+		map_entity_add( map, &entity_cube );
+	}
 
 	glViewport(
 		0,
@@ -530,6 +576,11 @@ int main()
 		// 	/* material_id */ cube_mesh->material_id,
 		// 	/*   transform */ &model_cube->transform
 		// );
+
+		// Update Uniform_Buffer_Lights
+		maps_update_lights_manager();
+
+		// Draw entities
 		ForIt( map->entity_table.entities.data, map->entity_table.entities.size ) {
 			if ( it == NULL )
 				continue;
@@ -665,7 +716,6 @@ int main()
 					Entity_ID entity_id = map->entity_table.ids.data[ it_index ];
 					StringView_ASCII type_name = entity_type_name( it->type );
 					if ( ImGui::TreeNode( (void*)(intptr_t)it_index, "%hu: " StringViewFormat, entity_id, StringViewArgument( type_name ) ) ) {
-						ImGui::Text( "Type: " StringViewFormat, StringViewArgument( type_name ) );
 						ImGui::Text( "Parent: %hu", it->parent );
 						if ( ImGui::TreeNode( "Bits" ) ) {
 							ImGui::CheckboxFlags( "NoDraw", ( u32 * )&it->bits, EntityBit_NoDraw );

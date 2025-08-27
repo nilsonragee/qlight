@@ -21,11 +21,6 @@
     out   int gl_SampleMask[];    // GLSL 4.00+ or ARB_sample_shading
 */
 
-struct Light {
-    vec3 position; // World position
-    vec3 color;
-};
-
 // Inputs from the vertex shader.
 // Variable names must match the ones declared in vertex shader outputs.
 in vec2 fragment_texture_uv;
@@ -37,12 +32,21 @@ uniform sampler2D gbuffer_position;
 uniform sampler2D gbuffer_normal;
 uniform sampler2D gbuffer_diffuse_specular;
 
-const int MAX_LIGHT_SOURCES = 32;
-
 uniform     vec3 view_position;
 uniform     vec3 ambient; // ambient light color
-uniform    Light lights[ MAX_LIGHT_SOURCES ];
-uniform    float shininess_exponent;
+
+struct Light {
+    vec4 position; // .w: positional -> 1, directional -> 0
+    vec4 color; // .a: intensity
+    float shininess_exponent;
+};
+
+#define MAX_LIGHT_SOURCES 32
+
+layout ( std140, binding = 0 ) uniform Uniform_Buffer_Lights {
+	Light lights[ MAX_LIGHT_SOURCES ];
+	uint lights_count;
+};
 
 void main()
 {
@@ -60,10 +64,18 @@ void main()
 	vec3 final_color = ambient_light;
 
 	for ( int i = 0; i < MAX_LIGHT_SOURCES; i += 1 ) {
+		vec3 light_position = lights[ i ].position.xyz;
+		float w = lights[ i ].position.w;
+		vec3 light_color = lights[ i ].color.rgb;
+		float light_intensity = lights[ i ].color.a;
+		float shininess_exponent = lights[ i ].shininess_exponent;
 
 		/* Diffuse light */
 
-		vec3 light_direction = normalize( lights[ i ].position - position );
+		// TODO: Replace if-branching with Vector4 multiplication
+		vec3 light_direction = normalize( light_position - position );
+		if ( w != 1.0 )
+			light_direction = light_position;
 
 		// `dot( normal, light_direction` calculates the angle at which light comes to a surface normal.
 		//  1 (  0 degrees)  ->  light hits the surface _directly_, maximum brightness.
@@ -73,8 +85,8 @@ void main()
 		// Light coming from behind should not impact visible surface, that's why we clamp negatives to 0.
 		float diffuse_intensity = max( dot( normal, light_direction ), 0.0 ); // a.k.a. light_angle_in_radians
 
-		vec3 diffuse_light = diffuse_intensity * diffuse * lights[ i ].color;
-		final_color += diffuse_light;
+		vec3 diffuse_light = diffuse_intensity * diffuse * light_color;
+		final_color += diffuse_light * light_intensity;
 
 		/* Specular highlight */
 
@@ -86,8 +98,8 @@ void main()
 		if ( shininess_exponent > 0.0 ) {
 			vec3 halfway_direction = normalize( light_direction + view_direction );
 			float specular_term = pow( max( dot( view_direction, halfway_direction ), 0.0 ), shininess_exponent );
-			vec3 specular_highlight = specular * specular_term * lights[ i ].color;
-			final_color += specular_highlight;
+			vec3 specular_highlight = specular * specular_term * light_color;
+			final_color += specular_highlight * light_intensity;
 		}
 	}
 

@@ -53,22 +53,195 @@ enum Renderer_GL_Buffer_Usage : GLenum {
 	RendererGLBufferUsage_DynamicCopy = GL_DYNAMIC_COPY
 };
 
-// More into at: `docs.gl/gl4/glMapBufferRange`
+// These forward declarations are needed for bits casting functions down below.
+enum Renderer_GL_Map_Access_Bits;
+enum Renderer_GL_Buffer_Storage_Bits;
+
+// More info at: `docs.gl/gl4/glMapBufferRange`
 enum Renderer_GL_Map_Access_Bits : GLbitfield {
 	RendererGLMapAccessBit_None = 0,
 
+	// GL_MAP_READ_BIT indicates that the returned pointer may be used
+	//   to read buffer object data.
+	// No GL error is generated if the pointer is used to query a mapping
+	//   which excludes this flag, but the result is undefined and system errors
+	//   (possibly including program termination) may occur.
 	RendererGLMapAccessBit_Read = GL_MAP_READ_BIT,
+
+	// GL_MAP_WRITE_BIT indicates that the returned pointer may be used
+	//   to modify buffer object data.
+	// No GL error is generated if the pointer is used to modify a mapping
+	//   which excludes this flag, but the result is undefined and system errors
+	//   (possibly including program termination) may occur.
 	RendererGLMapAccessBit_Write = GL_MAP_WRITE_BIT,
-	RendererGLMapAccessBit_ReadWrite = GL_MAP_READ_BIT | GL_MAP_WRITE_BIT,
+
+	// GL_MAP_PERSISTENT_BIT indicates that the mapping is to be made
+	//   in a persistent fassion and that the client intends to hold
+	//   and use the returned pointer during subsequent GL operation.
+	// It is not an error to call drawing commands (render) while buffers
+	//   are mapped using this flag.
+	// It is an error to specify this flag if the buffer's data store
+	//   was not allocated through a call to the glBufferStorage command
+	//   in which the GL_MAP_PERSISTENT_BIT was also set.
 	RendererGLMapAccessBit_Persistent = GL_MAP_PERSISTENT_BIT,
+
+	// GL_MAP_COHERENT_BIT indicates that a persistent mapping is also to be coherent.
+	// Coherent maps guarantee that the effect of writes to a buffer's data store
+	//   by either the client or server will eventually become visible to the other
+	//   without further intervention from the application.
+	// In the absence of this bit, persistent mappings are not coherent
+	//   and modified ranges of the buffer store must be explicitly communicated
+	//   to the GL, either by unmapping the buffer, or through a call to
+	//   glFlushMappedBufferRange or glMemoryBarrier.
 	RendererGLMapAccessBit_Coherent = GL_MAP_COHERENT_BIT,
 
-	// Optional
+	// --- Optional ---
+
+	// GL_MAP_INVALIDATE_RANGE_BIT indicates that the previous contents
+	//   of the specified range may be discarded.
+	// Data within this range are undefined with the exception of subsequently written data.
+	// No GL error is generated if subsequent GL operations access unwritten data,
+	//   but the result is undefined and system errors
+	//   (possibly including program termination) may occur.
+	// This flag may not be used in combination with GL_MAP_READ_BIT.
 	RendererGLMapAccessBit_InvalidateRange = GL_MAP_INVALIDATE_RANGE_BIT,
+
+	// GL_MAP_INVALIDATE_BUFFER_BIT indicates that the previous contents
+	//   of the entire buffer may be discarded.
+	// Data within the entire buffer are undefined with the exception of subsequently written data.
+	// No GL error is generated if subsequent GL operations access unwritten data,
+	//   but the result is undefined and system errors
+	//   (possibly including program termination) may occur.
+	// This flag may not be used in combination with GL_MAP_READ_BIT.
 	RendererGLMapAccessBit_InvalidateBuffer = GL_MAP_INVALIDATE_BUFFER_BIT,
+
+	// GL_MAP_FLUSH_EXPLICIT_BIT indicates that one or more discrete subranges
+	//   of the mapping may be modified.
+	// When this flag is set, modifications to each subrange must be
+	//   explicitly flushed by calling glFlushMappedBufferRange.
+	// No GL error is set if a subrange of the mapping is modified and not flushed,
+	//   but data within the corresponding subrange of the buffer are undefined.
+	// This flag may only be used in conjunction with GL_MAP_WRITE_BIT.
+	// When this option is selected, flushing is strictly limited to regions
+	//   that are explicitly indicated with calls to glFlushMappedBufferRange prior to unmap.
+	// If this option is not selected glUnmapBuffer will automatically flush the entire mapped range when called.
 	RendererGLMapAccessBit_FlushExplicit = GL_MAP_FLUSH_EXPLICIT_BIT,
+
+	// GL_MAP_UNSYNCHRONIZED_BIT indicates that the GL should not attempt
+	//   to synchronize pending operations on the buffer prior to returning
+	//   from glMapBufferRange or glMapNamedBufferRange.
+	// No GL error is generated if pending operations which source or modify
+	//   the buffer overlap the mapped region, but the result of such
+	//   previous and any subsequent operations is undefined.
 	RendererGLMapAccessBit_Unsynchronized = GL_MAP_UNSYNCHRONIZED_BIT
 };
+
+constexpr Renderer_GL_Map_Access_Bits RendererGLMapAccessBits_ReadWrite = static_cast< const Renderer_GL_Map_Access_Bits >(
+	RendererGLMapAccessBit_Read |
+	RendererGLMapAccessBit_Write );
+
+constexpr Renderer_GL_Map_Access_Bits RendererGLMapAccessBits_SharedWithBufferStorage = static_cast< const Renderer_GL_Map_Access_Bits >(
+	RendererGLMapAccessBits_ReadWrite |
+	RendererGLMapAccessBit_Persistent |
+	RendererGLMapAccessBit_Coherent );
+
+inline Renderer_GL_Buffer_Storage_Bits
+renderer_gl_map_access_bits_to_buffer_storage_bits( Renderer_GL_Map_Access_Bits access_bits ) {
+	return static_cast< Renderer_GL_Buffer_Storage_Bits >( access_bits & RendererGLMapAccessBits_SharedWithBufferStorage );
+}
+
+inline Renderer_GL_Map_Access_Bits
+renderer_gl_map_access_bits( GLbitfield access_bits ) {
+	return static_cast< Renderer_GL_Map_Access_Bits >( access_bits );
+}
+
+// More info at: `https://docs.gl/gl4/glBufferStorage`
+enum Renderer_GL_Buffer_Storage_Bits : GLbitfield {
+	RendererGLBufferStorageBit_None = 0,
+
+	// The contents of the data store may be updated after creation through
+	//   calls to glBufferSubData.
+	// If this bit is not set, the buffer content may not be directly updated
+	//   by the client. The data argument may be used to specify the initial
+	//   content of the buffer's data store regardless of the presence of the
+	//   GL_DYNAMIC_STORAGE_BIT.
+	// Regardless of the presence of this bit, buffers may always be updated
+	//   with server-side calls such as glCopyBufferSubData and glClearBufferSubData.
+	RendererGLBufferStorageBit_DynamicStorage = GL_DYNAMIC_STORAGE_BIT,
+
+	// --- Shared with Map Access Bits BEGIN ---
+
+	// The data store may be mapped by the client for read access and a pointer
+	//   in the client's address space obtained that may be read from.
+	RendererGLBufferStorageBit_Read = GL_MAP_READ_BIT,
+
+	// The data store may be mapped by the client for write access and a pointer
+	//   in the client's address space obtained that may be written through.
+	RendererGLBufferStorageBit_Write = GL_MAP_WRITE_BIT,
+
+	// The client may request that the server read from or write to the buffer
+	//   while it is mapped.
+	// The client's pointer to the data store remains valid so long as
+	//   the data store is mapped, even during execution of drawing or dispatch commands.
+	RendererGLBufferStorageBit_Persistent = GL_MAP_PERSISTENT_BIT,
+
+	// Shared access to buffers that are simultaneously mapped for client access
+	//   and are used by the server will be coherent, so long as that mapping
+	//   is performed using glMapBufferRange.
+	// That is, data written to the store by either the client or server will be
+	//   immediately visible to the other with no further action taken by the application.
+	// In particular,
+	//   * If GL_MAP_COHERENT_BIT is not set and the client performs a write
+	//       followed by a call to the glMemoryBarrier command with the
+	//       GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT set, then in subsequent commands
+	//       the server will see the writes.
+	//   * If GL_MAP_COHERENT_BIT is set and the client performs a write,
+	//       then in subsequent commands the server will see the writes.
+	//   * If GL_MAP_COHERENT_BIT is not set and the server performs a write,
+	//       the application must call glMemoryBarrier with the
+	//       GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT set and then
+	//       call glFenceSync with GL_SYNC_GPU_COMMANDS_COMPLETE (or glFinish).
+	//     Then the CPU will see the writes after the sync is complete.
+	//   * If GL_MAP_COHERENT_BIT is set and the server does a write,
+	//       the app must call FenceSync with GL_SYNC_GPU_COMMANDS_COMPLETE (or glFinish).
+	//     Then the CPU will see the writes after the sync is complete.
+	RendererGLBufferStorageBit_Coherent = GL_MAP_COHERENT_BIT,
+
+	// --- Shared with Map Access Bits END ---
+
+	// When all other criteria for the buffer storage allocation are met,
+	//   this bit may be used by an implementation to determine whether to
+	//   use storage that is local to the server or to the client to serve
+	//   as the backing store for the buffer.
+	RendererGLBufferStorageBit_ClientStorage = GL_CLIENT_STORAGE_BIT
+
+	// glBufferStorage, glNamedBufferStorage:
+	// The allowed combinations of flags are subject to certain restrictions.
+	// They are as follows:
+	//   * If flags contains GL_MAP_PERSISTENT_BIT, it must also contain
+	//       at least one of GL_MAP_READ_BIT or GL_MAP_WRITE_BIT.
+	//   * If flags contains GL_MAP_COHERENT_BIT, it must also contain
+	//       GL_MAP_PERSISTENT_BIT.
+};
+
+constexpr Renderer_GL_Buffer_Storage_Bits RendererGLBufferStorageBits_ReadWrite = static_cast< const Renderer_GL_Buffer_Storage_Bits >(
+	RendererGLBufferStorageBit_Read |
+	RendererGLBufferStorageBit_Write );
+
+constexpr Renderer_GL_Buffer_Storage_Bits RendererGLBufferStorageBits_SharedWithMapAccess = static_cast< const Renderer_GL_Buffer_Storage_Bits >(
+	RendererGLBufferStorageBits_ReadWrite |
+	RendererGLBufferStorageBit_Persistent |
+	RendererGLBufferStorageBit_Coherent );
+
+inline Renderer_GL_Map_Access_Bits
+renderer_gl_buffer_storage_bits_to_map_access_bits( Renderer_GL_Buffer_Storage_Bits storage_bits ) {
+	return static_cast< Renderer_GL_Map_Access_Bits >( storage_bits & RendererGLBufferStorageBits_SharedWithMapAccess );
+}
+
+inline Renderer_GL_Buffer_Storage_Bits
+renderer_gl_buffer_storage_bits( GLbitfield storage_bits ) {
+	return static_cast< Renderer_GL_Buffer_Storage_Bits >( storage_bits );
+}
 
 enum Renderer_GL_Buffer_Access_Mode : GLenum {
 	RendererGLBufferAccessMode_None = 0,
@@ -76,6 +249,15 @@ enum Renderer_GL_Buffer_Access_Mode : GLenum {
 	RendererGLBufferAccessMode_Read = GL_READ_ONLY,
 	RendererGLBufferAccessMode_Write = GL_WRITE_ONLY,
 	RendererGLBufferAccessMode_ReadWrite = GL_READ_WRITE
+};
+
+struct Renderer_GL_Buffer_Mapping {
+	ArrayView< u8 > view;
+	u32 offset;
+	Renderer_GL_Map_Access_Bits access_bits;
+
+	// Maybe store pointer to a `Renderer_GL_Buffer` object?
+	GLuint opengl_buffer_id;
 };
 
 enum Renderer_Data_Type : u32 {
@@ -142,7 +324,7 @@ struct Renderer_Uniform_Buffer {
 	StringView_ASCII name;
 	u32 size;
 	u32 binding;
-	Renderer_GL_Buffer_Usage usage;
+	Renderer_GL_Buffer_Storage_Bits storage_bits;
 
 	// OpenGL-specific:
 	GLuint opengl_ubo;
@@ -296,7 +478,7 @@ renderer_shader_program_update_uniform_locations( Renderer_Shader_Program *progr
 void
 renderer_set_uniforms_transpose_matrix( bool value );
 
-u64
+u32
 renderer_data_type_size( Renderer_Data_Type data_type );
 
 GLenum
@@ -402,7 +584,7 @@ Texture_ID
 renderer_texture_purple_checkers();
 
 Renderer_Uniform_Buffer *
-renderer_uniform_buffer_create( StringView_ASCII name, u32 size, Renderer_GL_Buffer_Usage usage, u32 binding = INVALID_UNIFORM_BUFFER_BINDING );
+renderer_uniform_buffer_create( StringView_ASCII name, u32 size, Renderer_GL_Buffer_Storage_Bits storage_bits, u32 binding = INVALID_UNIFORM_BUFFER_BINDING );
 
 void
 renderer_uniform_buffer_set_binding( Renderer_Uniform_Buffer *uniform_buffer, u32 binding );
@@ -410,23 +592,8 @@ renderer_uniform_buffer_set_binding( Renderer_Uniform_Buffer *uniform_buffer, u3
 void *
 renderer_uniform_buffer_memory_map( Renderer_Uniform_Buffer *uniform_buffer, Renderer_GL_Map_Access_Bits access_bits, u32 size = 0, u32 offset = 0 );
 
-inline void *
-renderer_uniform_buffer_memory_map_for_read( Renderer_Uniform_Buffer *uniform_buffer, u32 size = 0, u32 offset = 0 ) {
-	return renderer_uniform_buffer_memory_map( uniform_buffer, RendererGLMapAccessBit_Read, size, offset );
-}
-
-inline void *
-renderer_uniform_buffer_memory_map_for_write( Renderer_Uniform_Buffer *uniform_buffer, u32 size = 0, u32 offset = 0 ) {
-	return renderer_uniform_buffer_memory_map( uniform_buffer, RendererGLMapAccessBit_Write, size, offset );
-}
-
-inline void *
-renderer_uniform_buffer_memory_map_for_read_write( Renderer_Uniform_Buffer *uniform_buffer, u32 size = 0, u32 offset = 0 ) {
-	return renderer_uniform_buffer_memory_map( uniform_buffer, RendererGLMapAccessBit_ReadWrite, size, offset );
-}
-
 bool
-renderer_uniform_buffer_memory_unmap( Renderer_Uniform_Buffer *uniform_buffer );
+renderer_uniform_buffer_memory_unmap( Renderer_Uniform_Buffer *uniform_buffer, Renderer_GL_Map_Access_Bits access_bits, u32 size, u32 offset );
 
 u32
 renderer_uniform_buffer_write( Renderer_Uniform_Buffer *uniform_buffer, ArrayView< u8 > write_data, u32 size = 0, u32 offset = 0 );

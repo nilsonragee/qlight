@@ -222,6 +222,16 @@ opengl_generate_and_bind_element_buffer( GLuint *id, StringView_ASCII debug_name
 #endif
 }
 
+static GLenum
+index_type_size_to_opengl( u32 size ) {
+	switch ( size ) {
+		case 1: return GL_UNSIGNED_BYTE;
+		case 2: return GL_UNSIGNED_SHORT;
+		case 4: return GL_UNSIGNED_INT;
+		default: return 0;
+	}
+}
+
 static void
 create_default_textures() {
 	log_debug( "Creating default textures..." );
@@ -339,16 +349,15 @@ setup_fullscreen_quad() {
 
 static void
 draw_fullscreen_quad() {
-	renderer_bind_framebuffer( 0 );
-	Renderer_Framebuffer *default_framebuffer = renderer_framebuffer_instance( 0 );
-
-	// // Clear Geometry framebuffer color attachment texture
-	// glClearNamedFramebufferfv(
-	// 	/* framebuffer */ default_framebuffer->opengl_framebuffer,
-	// 	/*      buffer */ GL_COLOR,
-	// 	/*  drawbuffer */ 0,  // Attachment  index
-	// 	/*       value */ &g_renderer.clear_color.x
-	// );
+	Mesh *mesh = mesh_instance( g_renderer.fullscreen_quad );
+	glBindVertexArray( mesh->opengl_vao );
+	GLenum index_type = index_type_size_to_opengl( mesh->indices.item_size );
+	glDrawElements(
+		/*    mode */ GL_TRIANGLES,
+		/*   count */ mesh->indices.size,
+		/*    type */ index_type,
+		/* indices */ NULL
+	);
 }
 
 Renderer_Shader_Program *
@@ -696,6 +705,7 @@ renderer_init() {
 	constexpr u16 TEMP_WIDTH = 1280;
 	constexpr u16 TEMP_HEIGHT = 720;
 	setup_geometry_buffer( TEMP_WIDTH, TEMP_HEIGHT );
+	setup_fullscreen_quad();
 
 	g_renderer.output_channel = RendererOutputChannel_FinalColor;
 
@@ -1060,7 +1070,7 @@ renderer_set_uniforms_transpose_matrix( bool value ) {
 	g_renderer.uniforms_transpose_matrix = value;
 }
 
-u64
+u32
 renderer_data_type_size( Renderer_Data_Type data_type ) {
 	switch ( data_type ) {
 		case RendererDataType_s8:
@@ -1357,10 +1367,8 @@ geometry_pass_use_material( Material *material ) {
 	Renderer_Shader_Program *gbuffer_shader = g_renderer.gbuffer.shader_program;
 
 	// These are pointers to bound camera's matrices.
-	StringView_ASCII view = "view";
-	StringView_ASCII projection = "projection";
-	renderer_shader_program_set_uniform( gbuffer_shader, view, RendererDataType_Matrix4x4_f32, g_renderer.view_matrix );
-	renderer_shader_program_set_uniform( gbuffer_shader, projection, RendererDataType_Matrix4x4_f32, g_renderer.projection_matrix );
+	renderer_shader_program_set_uniform( gbuffer_shader, "view", RendererDataType_Matrix4x4_f32, g_renderer.view_matrix );
+	renderer_shader_program_set_uniform( gbuffer_shader, "projection", RendererDataType_Matrix4x4_f32, g_renderer.projection_matrix );
 
 	/* Diffuse texture */
 
@@ -1403,16 +1411,6 @@ geometry_pass_use_material( Material *material ) {
 	renderer_bind_texture( texture_specular_index, texture_specular_id );
 }
 
-static GLenum
-index_type_size_to_opengl( u32 size ) {
-	switch ( size ) {
-		case 1: return GL_UNSIGNED_BYTE;
-		case 2: return GL_UNSIGNED_SHORT;
-		case 4: return GL_UNSIGNED_INT;
-		default: return 0;
-	}
-}
-
 static void
 geometry_pass_draw_same_material_commands( ArrayView< Renderer_Render_Command > commands ) {
 	Material_ID material_id = commands.data[ 0 ].material_id;
@@ -1431,7 +1429,7 @@ geometry_pass_draw_same_material_commands( ArrayView< Renderer_Render_Command > 
 		GLenum index_type = index_type_size_to_opengl( mesh->indices.item_size );
 		glDrawElements(
 			/*    mode */ GL_TRIANGLES,
-			/*   count */ mesh->vertices.size, // divide by 3?
+			/*   count */ mesh->indices.size,
 			/*    type */ index_type,
 			/* indices */ NULL
 		);
@@ -1444,7 +1442,8 @@ extern Screen screen;
 
 static void
 draw_pass_geometry() {
-	// sort render queue
+	glEnable( GL_DEPTH_TEST );
+
 	renderer_bind_framebuffer( g_renderer.gbuffer.framebuffer );
 	Renderer_Framebuffer *geometry_framebuffer = renderer_framebuffer_instance( g_renderer.gbuffer.framebuffer );
 
@@ -1494,22 +1493,6 @@ draw_pass_geometry() {
 
 static void
 lighting_pass_use_material( Material *material ) {
-	// phong_fragment.glsl:
-	/*
-		uniform sampler2D gbuffer_position;
-		uniform sampler2D gbuffer_normal;
-		uniform sampler2D gbuffer_diffuse_specular;
-
-		const int MAX_LIGHT_SOURCES = 32;
-
-		uniform     vec3 view_position;
-		uniform     vec3 ambient; // ambient light color
-		uniform    Light lights[ MAX_LIGHT_SOURCES ];
-		uniform    float shininess_exponent;
-	*/
-
-	renderer_bind_shader_program( material->shader_program );
-
 	renderer_shader_program_set_uniform(
 		material->shader_program,
 		"view_position",
@@ -1524,55 +1507,88 @@ lighting_pass_use_material( Material *material ) {
 		&g_renderer.ambient_light
 	);
 
-	renderer_shader_program_set_uniform(
-		material->shader_program,
-		"shininess_exponent",
-		RendererDataType_f32,
-		&material->shininess_exponent
-	);
+	// Uniform_Buffer_Lights gets updated in `maps_lights_manager_update()`
+	//   every time light entity added/removed.
+}
 
+static void lighting_pass_use_gbuffer_textures( Renderer_Shader_Program *material_shader ) {
+
+	/* G-Buffer Position texture */
+
+	s32 texture_position_index = 0; // make configurable
+	renderer_shader_program_set_uniform(
+		material_shader,
+		"gbuffer_position",
+		RendererDataType_s32,
+		&texture_position_index
+	);
+	Texture_ID gbuffer_texture_position = g_renderer.gbuffer.texture_position;
+	Texture_ID texture_position_id = ( gbuffer_texture_position != INVALID_TEXTURE_ID ) ? gbuffer_texture_position : g_renderer.texture_black;
+	renderer_bind_texture( texture_position_index, texture_position_id );
+
+	/* G-Buffer Normal texture */
+
+	s32 texture_normal_index = 1; // make configurable
+	renderer_shader_program_set_uniform(
+		material_shader,
+		"gbuffer_normal",
+		RendererDataType_s32,
+		&texture_normal_index
+	);
+	Texture_ID gbuffer_texture_normal = g_renderer.gbuffer.texture_normal;
+	Texture_ID texture_normal_id = ( gbuffer_texture_normal != INVALID_TEXTURE_ID ) ? gbuffer_texture_normal : g_renderer.texture_black;
+	renderer_bind_texture( texture_normal_index, texture_normal_id );
+
+	/* G-Buffer Diffuse/Specular texture */
+
+	s32 texture_diffuse_specular_index = 2; // make configurable
+	renderer_shader_program_set_uniform(
+		material_shader,
+		"gbuffer_diffuse_specular",
+		RendererDataType_s32,
+		&texture_diffuse_specular_index
+	);
+	Texture_ID gbuffer_texture_diffuse_specular = g_renderer.gbuffer.texture_color_specular;
+	Texture_ID texture_diffuse_specular_id = ( gbuffer_texture_diffuse_specular != INVALID_TEXTURE_ID ) ? gbuffer_texture_diffuse_specular : g_renderer.texture_black;
+	renderer_bind_texture( texture_diffuse_specular_index, texture_diffuse_specular_id );
 }
 
 static void
 lighting_pass_draw_same_material_commands( ArrayView< Renderer_Render_Command > commands ) {
 	Material_ID material_id = commands.data[ 0 ].material_id;
 	Material *material = material_instance( material_id );
+	Renderer_Shader_Program *material_shader = material->shader_program;
 	renderer_bind_shader_program( material->shader_program );
+	lighting_pass_use_gbuffer_textures( material->shader_program );
 	lighting_pass_use_material( material );
 
-	ForIt( commands.data, commands.size ) {
-		// draw_fullscreen_quad?
-		//renderer_shader_program_set_uniform( gbuffer_shader, "model", RendererDataType_Matrix4x4_f32, &command->transform->model_matrix );
-		//renderer_shader_program_set_uniform( gbuffer_shader, "normal_matrix", RendererDataType_Matrix3x3_f32, &command->transform->normal_matrix );
-
-		//glBindVertexArray( mesh->opengl_vao );
-		//glDrawElements(
-		//	/*    mode */ GL_TRIANGLES,
-		//	/*   count */ mesh->vertices.size,
-		//	/*    type */ GL_UNSIGNED_INT,
-		//	/* indices */ NULL
-		//);
-	}}
+	draw_fullscreen_quad();
 }
 
 static void
 draw_pass_lighting() {
+	glDisable( GL_DEPTH_TEST );
+
 	renderer_bind_framebuffer( 0 ); // Default framebuffer
 	Renderer_Framebuffer *default_framebuffer = renderer_framebuffer_instance( 0 );
 
-	renderer_bind_texture( 0, g_renderer.gbuffer.texture_position );
-	renderer_bind_texture( 1, g_renderer.gbuffer.texture_normal );
-	renderer_bind_texture( 2, g_renderer.gbuffer.texture_color_specular );
+	// Clear Backbuffer framebuffer color attachment texture
+	glClearNamedFramebufferfv(
+		/* framebuffer */ default_framebuffer->opengl_framebuffer,
+		/*      buffer */ GL_COLOR,
+		/*  drawbuffer */ 0,  // Attachment  index
+		/*       value */ &g_renderer.clear_color.x
+	);
 
 	u32 command_idx = 0;
 	ForIt( g_renderer.render_queue_material_sequence.data, g_renderer.render_queue_material_sequence.size ) {
 		Renderer_Render_Command *command_ptr = &g_renderer.render_queue.data[ command_idx ];
 		ArrayView< Renderer_Render_Command > commands = { .size = it, .data = command_ptr };
 		lighting_pass_draw_same_material_commands( commands );
-		command_idx += it * sizeof( Renderer_Render_Command );
+		command_idx += it;
 	}}
 
-	Assert( command_idx == g_renderer.render_queue.size - 1 );
+	Assert( command_idx == g_renderer.render_queue.size );
 
 }
 
@@ -1623,7 +1639,7 @@ void
 renderer_draw_frame() {
 	sort_render_queue();
 	draw_pass_geometry();
-	// draw_pass_lighting();
+	draw_pass_lighting();
 	// renderer_draw_post_processsing_pass();
 	// renderer_draw_ui_pass();
 
@@ -1997,7 +2013,7 @@ renderer_texture_purple_checkers() {
 }
 
 static void
-opengl_create_and_bind_uniform_buffer( GLuint *id, GLsizeiptr size, GLuint binding, GLenum usage, StringView_ASCII debug_name ) {
+opengl_create_and_bind_uniform_buffer( GLuint *id, GLsizeiptr size, GLbitfield storage_bits, StringView_ASCII debug_name ) {
 	glGenBuffers( 1, id );
 	glBindBuffer( GL_UNIFORM_BUFFER, *id );
 #ifdef QLIGHT_DEBUG
@@ -2008,14 +2024,23 @@ opengl_create_and_bind_uniform_buffer( GLuint *id, GLsizeiptr size, GLuint bindi
 		*id
 	);
 #endif
-	glNamedBufferData(
+	// Legacy
+	// glNamedBufferData(
+	// 	/* buffer */ *id,
+	// 	/*   size */ size,
+	// 	/*   data */ NULL,
+	// 	/*  usage */ usage
+	// );
+
+	glNamedBufferStorage(
 		/* buffer */ *id,
 		/*   size */ size,
 		/*   data */ NULL,
-		/*  usage */ usage
+		/*  flags */ storage_bits
 	);
 }
 
+/*
 Renderer_Uniform_Buffer *
 renderer_uniform_buffer_create( StringView_ASCII name, u32 size, Renderer_GL_Buffer_Usage usage, u32 binding ) {
 	Renderer_Uniform_Buffer _uniform_buffer = {
@@ -2027,6 +2052,28 @@ renderer_uniform_buffer_create( StringView_ASCII name, u32 size, Renderer_GL_Buf
 	};
 
 	opengl_create_and_bind_uniform_buffer( &_uniform_buffer.opengl_ubo, size, binding, usage, name );
+
+	u32 buffer_idx = array_add( &g_renderer.uniform_buffers, _uniform_buffer );
+	Renderer_Uniform_Buffer *uniform_buffer = &g_renderer.uniform_buffers.data[ buffer_idx ];
+
+	if ( binding != INVALID_UNIFORM_BUFFER_BINDING )
+		renderer_uniform_buffer_set_binding( uniform_buffer, binding );
+
+	return uniform_buffer;
+}
+*/
+
+Renderer_Uniform_Buffer *
+renderer_uniform_buffer_create( StringView_ASCII name, u32 size, Renderer_GL_Buffer_Storage_Bits storage_bits, u32 binding ) {
+	Renderer_Uniform_Buffer _uniform_buffer = {
+		.name = name,
+		.size = size,
+		.binding = binding,
+		.storage_bits = storage_bits
+		// .opengl_ubo
+	};
+
+	opengl_create_and_bind_uniform_buffer( &_uniform_buffer.opengl_ubo, size, storage_bits, name );
 
 	u32 buffer_idx = array_add( &g_renderer.uniform_buffers, _uniform_buffer );
 	Renderer_Uniform_Buffer *uniform_buffer = &g_renderer.uniform_buffers.data[ buffer_idx ];
@@ -2077,9 +2124,11 @@ renderer_uniform_buffer_write( Renderer_Uniform_Buffer *uniform_buffer, ArrayVie
 	if ( size == 0 )
 		write_size = uniform_buffer->size - offset;
 
-	u8 *uniform_data = ( u8 * )renderer_uniform_buffer_memory_map_for_write( uniform_buffer, write_size, offset );
+
+	Renderer_GL_Map_Access_Bits access_bits = renderer_gl_buffer_storage_bits_to_map_access_bits( uniform_buffer->storage_bits );
+	void *uniform_data = renderer_uniform_buffer_memory_map( uniform_buffer, access_bits, write_size, offset );
 	memcpy( uniform_data, write_data.data, write_size );
-	Assert( renderer_uniform_buffer_memory_unmap( uniform_buffer ) );
+	Assert( renderer_uniform_buffer_memory_unmap( uniform_buffer, access_bits, size, offset ) );
 	return write_size;
 }
 
@@ -2094,14 +2143,27 @@ renderer_uniform_buffer_read( Renderer_Uniform_Buffer *uniform_buffer, Array< u8
 	if ( size == 0 )
 		read_view.size = uniform_buffer->size - offset;
 
-	read_view.data = ( u8 * )renderer_uniform_buffer_memory_map_for_read( uniform_buffer, size, offset );
+	Renderer_GL_Map_Access_Bits access_bits = renderer_gl_buffer_storage_bits_to_map_access_bits( uniform_buffer->storage_bits );
+	read_view.data = ( u8 * )renderer_uniform_buffer_memory_map( uniform_buffer, access_bits, size, offset );
 	u32 bytes_read = array_add_many( out_read_data, read_view );
-	Assert( renderer_uniform_buffer_memory_unmap( uniform_buffer ) );
+	Assert( renderer_uniform_buffer_memory_unmap( uniform_buffer, access_bits, size, offset ) );
 	return bytes_read;
 }
 
 bool
-renderer_uniform_buffer_memory_unmap( Renderer_Uniform_Buffer *uniform_buffer ) {
+renderer_uniform_buffer_memory_unmap( Renderer_Uniform_Buffer *uniform_buffer, Renderer_GL_Map_Access_Bits access_bits, u32 size, u32 offset ) {
+	// TODO: Handle specific cases based on access bits:
+	//   InvalidateRange,
+	//   InvalidateBuffer,
+	//   FlushExplicit,
+	//   Unsynchronized.
+
+	// u32 length = ( size != 0 ) ? size : uniform_buffer->size - offset;
+	// GL_ASSERT( glFlushMappedNamedBufferRange(
+	// 	/* buffer */ uniform_buffer->opengl_ubo,
+	// 	/* offset */ ( GLintptr )offset,
+	// 	/* length */ ( GLsizei )length
+	// ) );
 	bool result = glUnmapNamedBuffer( uniform_buffer->opengl_ubo );
 	return result;
 }

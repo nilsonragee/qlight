@@ -127,22 +127,22 @@ void camera_update_projection( Camera *camera ) {
 		);
 	}
 
-	int i = g_event_index;
-	Vector4_f32 *v;
-	StringView_ASCII projection_name = ( camera->bits & CameraBit_IsOrthographic ) ? "Orthographic" : "Perspective";
-	log_info( "[%d] projection: " StringViewFormat "",
-		i,
-		StringViewArgument( projection_name )
-	);
-	v = &camera->projection_matrix[ 0 ];
-	log_info( "[%d] camera->projection[0]: [% .3f, % .3f, % .3f, % .3f]", i, v->x, v->y, v->z, v->w );
-	v = &camera->projection_matrix[ 1 ];
-	log_info( "[%d] camera->projection[1]: [% .3f, % .3f, % .3f, % .3f]", i, v->x, v->y, v->z, v->w );
-	v = &camera->projection_matrix[ 2 ];
-	log_info( "[%d] camera->projection[2]: [% .3f, % .3f, % .3f, % .3f]", i, v->x, v->y, v->z, v->w );
-	v = &camera->projection_matrix[ 3 ];
-	log_info( "[%d] camera->projection[3]: [% .3f, % .3f, % .3f, % .3f]", i, v->x, v->y, v->z, v->w );
-	g_event_index++;
+	// int i = g_event_index;
+	// Vector4_f32 *v;
+	// StringView_ASCII projection_name = ( camera->bits & CameraBit_IsOrthographic ) ? "Orthographic" : "Perspective";
+	// log_info( "[%d] projection: " StringViewFormat "",
+	// 	i,
+	// 	StringViewArgument( projection_name )
+	// );
+	// v = &camera->projection_matrix[ 0 ];
+	// log_info( "[%d] camera->projection[0]: [% .3f, % .3f, % .3f, % .3f]", i, v->x, v->y, v->z, v->w );
+	// v = &camera->projection_matrix[ 1 ];
+	// log_info( "[%d] camera->projection[1]: [% .3f, % .3f, % .3f, % .3f]", i, v->x, v->y, v->z, v->w );
+	// v = &camera->projection_matrix[ 2 ];
+	// log_info( "[%d] camera->projection[2]: [% .3f, % .3f, % .3f, % .3f]", i, v->x, v->y, v->z, v->w );
+	// v = &camera->projection_matrix[ 3 ];
+	// log_info( "[%d] camera->projection[3]: [% .3f, % .3f, % .3f, % .3f]", i, v->x, v->y, v->z, v->w );
+	// g_event_index++;
 }
 
 Vector3_f32 camera_direction_right( Camera *camera ) {

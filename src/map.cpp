@@ -5,7 +5,160 @@ struct G_Maps {
 	Array< Map > maps;
 	Map *current;
 	Map *changing_to;
+	Lights_Manager lights_manager;
+	bool lights_manager_needs_update;
 } g_maps;
+
+static void
+lights_manager_init() {
+	Renderer_GL_Buffer_Storage_Bits storage_bits = renderer_gl_buffer_storage_bits(
+		RendererGLBufferStorageBit_Write |
+		RendererGLBufferStorageBit_Persistent |
+		RendererGLBufferStorageBit_Coherent
+	);
+
+	Renderer_Uniform_Buffer *uniform_buffer_lights = renderer_uniform_buffer_create(
+		/*         name */ "Lights",
+		/*         size */ sizeof( Uniform_Buffer_Lights ),
+		/* storage_bits */ storage_bits,
+		/*      binding */ 0
+	);
+
+	Renderer_GL_Map_Access_Bits access_bits = renderer_gl_buffer_storage_bits_to_map_access_bits( storage_bits );
+	u32 size = sizeof( Uniform_Buffer_Lights );
+	u32 offset = 0;
+
+	void *uniform_data = renderer_uniform_buffer_memory_map(
+		/* uniform_buffer */ uniform_buffer_lights,
+		/*    access_bits */ access_bits,
+		/*           size */ size,
+		/*         offset */ offset
+	);
+
+	Renderer_GL_Buffer_Mapping mapping = {
+		.view = array_view< u8 >( ( u8 * )uniform_data, size, 0, size ),
+		.offset = offset,
+		.access_bits = access_bits,
+		.opengl_buffer_id = uniform_buffer_lights->opengl_ubo
+	};
+
+	g_maps.lights_manager = {
+		.uniform_buffer = uniform_buffer_lights,
+		.mapping = mapping,
+		.current_slot = 0,
+		.prev_lights_count = 0,
+		.lights_count = 0,
+		.empty_slots = array_new< u16 >( sys_allocator, 16 ),
+		.light_entities = array_new< Entity_ID >( sys_allocator, MAX_LIGHT_SOURCES )
+	};
+}
+
+static void
+lights_manager_destroy() {
+	Lights_Manager *lights = &g_maps.lights_manager;
+	bool destroyed = renderer_uniform_buffer_destroy( lights->uniform_buffer );
+	Assert( destroyed );
+
+	array_free( &lights->empty_slots );
+	array_free( &lights->light_entities );
+
+	lights->uniform_buffer = NULL;
+	lights->current_slot = 0;
+	lights->prev_lights_count = 0;
+	lights->lights_count = 0;
+}
+
+static void
+lights_manager_update() {
+	Lights_Manager *lights = &g_maps.lights_manager;
+	Map *map = g_maps.current;
+	CArrayView c_directional_lights = map_stored_entities_of_type( map, EntityType_DirectionalLight );
+	CArrayView c_point_lights = map_stored_entities_of_type( map, EntityType_PointLight );
+	CArrayView c_spot_lights = map_stored_entities_of_type( map, EntityType_SpotLight );
+
+	ArrayView< Entity_Directional_Light > directional_lights = array_view< Entity_Directional_Light >(
+		/* data */ ( Entity_Directional_Light * )c_directional_lights.data,
+		/* size */ c_directional_lights.size
+	);
+	ArrayView< Entity_Point_Light > point_lights = array_view< Entity_Point_Light >(
+		/* data */ ( Entity_Point_Light * )c_point_lights.data,
+		/* size */ c_point_lights.size
+	);
+	ArrayView< Entity_Spot_Light > spot_lights = array_view< Entity_Spot_Light >(
+		/* data */ ( Entity_Spot_Light * )c_spot_lights.data,
+		/* size */ c_spot_lights.size
+	);
+
+	/*
+		if ( it.type == EntityType_DirectionalLight ) {
+			// what about Entity_Spot_Light?
+			position.w = 0.0f; // positional -> directional
+		}
+	*/
+
+	Uniform_Buffer_Lights *uniform_data = ( Uniform_Buffer_Lights * )lights->mapping.view.data;
+	Uniform_Buffer_Struct_Light *data_lights = ( Uniform_Buffer_Struct_Light * )lights->mapping.view.data;
+	ForIt( directional_lights.data, directional_lights.size ) {
+		u32 light_idx = lights->current_slot + it_index;
+
+		Vector4_f32 color = { it.color.r, it.color.g, it.color.b, it.intensity };
+		Vector3_f32 *t_pos = &it.transform.position;
+		Vector4_f32 position = { t_pos->x, t_pos->y, t_pos->z, 0.0f }; // directional -> .w = 0
+
+		Uniform_Buffer_Struct_Light uniform_light = {
+			.position = position,
+			.color = color,
+			.shininess_exponent = it.shininess_exponent,
+			._padding0 = { 0 }
+		};
+		data_lights[ light_idx ] = uniform_light;
+		lights->current_slot += 1;
+		lights->lights_count += 1;
+	}}
+
+	ForIt( point_lights.data, point_lights.size ) {
+		u32 light_idx = lights->current_slot + it_index;
+
+		Vector4_f32 color = { it.color.r, it.color.g, it.color.b, it.intensity };
+		Vector3_f32 *t_pos = &it.transform.position;
+		Vector4_f32 position = { t_pos->x, t_pos->y, t_pos->z, 1.0f }; // positional -> .w = 1
+
+		Uniform_Buffer_Struct_Light uniform_light = {
+			.position = position,
+			.color = color,
+			.shininess_exponent = it.shininess_exponent,
+			._padding0 = { 0 }
+		};
+		data_lights[ light_idx ] = uniform_light;
+		lights->current_slot += 1;
+		lights->lights_count += 1;
+	}}
+
+	ForIt( spot_lights.data, spot_lights.size ) {
+		u32 light_idx = lights->current_slot + it_index;
+
+		Vector4_f32 color = { it.color.r, it.color.g, it.color.b, it.intensity };
+		Vector3_f32 *t_pos = &it.transform.position;
+		Vector4_f32 position = { t_pos->x, t_pos->y, t_pos->z, 1.0f }; // positional -> .w = 1
+
+		Uniform_Buffer_Struct_Light uniform_light = {
+			.position = position,
+			.color = color,
+			.shininess_exponent = it.shininess_exponent,
+			._padding0 = { 0 }
+		};
+		data_lights[ light_idx ] = uniform_light;
+		lights->current_slot += 1;
+		lights->lights_count += 1;
+	}}
+
+	u32 lights_count_offset = offsetof( Uniform_Buffer_Lights, lights_count );
+	u32 *uniform_lights_count = ( u32 * )( ( u8 * )uniform_data + lights_count_offset );
+	lights->prev_lights_count = *uniform_lights_count;
+	*uniform_lights_count = lights->lights_count;
+
+	g_maps.lights_manager_needs_update = false;
+}
 
 static void
 entity_storages_free( Map *map ) {
@@ -38,14 +191,14 @@ bool maps_init() {
 	g_maps.maps = array_new< Map >( sys_allocator, 2 );
 	g_maps.current = NULL;
 	g_maps.changing_to = NULL;
+	lights_manager_init();
 
 	Map map_empty = {
 		.name = "empty",
 		.title = "",
 		.description = "",
 		.file_path = "",
-		// .models = array_new< Model_ID >( sys_allocator, 1 ),
-		// .entities = array_new< Entity_ID >( sys_allocator, 1 ),
+		// .entity_storages
 		.state = MapState_Loaded
 	};
 	u32 map_empty_idx = array_add( &g_maps.maps, map_empty );
@@ -58,7 +211,7 @@ bool maps_init() {
 		.title = "Test Map",
 		.description = "",
 		.file_path = "test.map",
-		// .entities = array_new< Entity_ID >( sys_allocator, 16 ),
+		// .entity_storages
 		.state = MapState_NotLoaded
 	};
 	u32 map_test_idx = array_add( &g_maps.maps, map_test );
@@ -81,6 +234,11 @@ void maps_shutdown() {
 		entity_table_destroy( &it.entity_table );
 	}}
 	array_free( &g_maps.maps );
+}
+
+void maps_update_lights_manager() {
+	if ( g_maps.lights_manager_needs_update )
+		lights_manager_update();
 }
 
 Map *map_load_from_file( StringView_ASCII name, StringView_ASCII file_path ) {
@@ -229,6 +387,13 @@ map_entity_add( Map *map, Entity *entity ) {
 
 	// 2. Add reference to that stored `Entity` to the map's `Entity_Lookup_Table`.
 	Entity_ID entity_id = entity_table_add( &map->entity_table, storage_entity );
+
+	switch ( entity->type ) {
+		case EntityType_DirectionalLight:
+		case EntityType_PointLight:
+		case EntityType_SpotLight:
+			g_maps.lights_manager_needs_update = true;
+	}
 	return entity_id;
 }
 
@@ -252,4 +417,11 @@ map_entity_remove( Map *map, Entity_ID entity_id ) {
 
 	bool removed = entity_table_remove( table, entity_id );
 	return removed;
+}
+
+CArrayView
+map_stored_entities_of_type( Map *map, Entity_Type type ) {
+	CArray *entity_storage = &map->entity_storages[ type ];
+	CArrayView view = carray_view( entity_storage );
+	return view;
 }

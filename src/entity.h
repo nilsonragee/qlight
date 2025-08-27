@@ -43,7 +43,7 @@ struct Entity_Player : Entity {
 
 struct Entity_Camera : Entity {
 	String_ASCII name;
-	Camera camera;
+	Camera *camera;
 };
 
 struct Entity_Static_Object : Entity {
@@ -57,11 +57,20 @@ struct Entity_Dynamic_Object : Entity {
 struct Entity_Directional_Light : Entity {
 	Vector3_f32 color;
 	f32 intensity;
+	float shininess_exponent;
 };
 
 struct Entity_Point_Light : Entity {
 	Vector3_f32 color;
 	f32 intensity;
+	float shininess_exponent;
 };
+
+struct Entity_Spot_Light : Entity {
+	Vector3_f32 color;
+	f32 intensity;
+	float shininess_exponent;
+};
+
 
 #endif /* QLIGHT_ENTITY_H */

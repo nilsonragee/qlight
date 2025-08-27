@@ -7,6 +7,34 @@
 #include "model.h"
 #include "entity.h"
 #include "entity_table.h"
+#include "renderer.h"
+
+// std140 - 16-byte alignment required
+struct Uniform_Buffer_Struct_Light {
+	Vector4_f32 position; // w=0: directional, w=1: positional
+	Vector4_f32 color;    // rgb: color, a: intensity
+	f32 shininess_exponent;
+	f32 _padding0[ 3 ]; // Align to 16 bytes.
+};
+
+#define MAX_LIGHT_SOURCES 32
+
+// std140 - 16-byte alignment required
+struct Uniform_Buffer_Lights {
+	Uniform_Buffer_Struct_Light lights[ MAX_LIGHT_SOURCES ];
+	u32 lights_count;
+	f32 _padding0[ 3 ]; // Align to 16 bytes.
+};
+
+struct Lights_Manager {
+	Renderer_Uniform_Buffer *uniform_buffer;
+	Renderer_GL_Buffer_Mapping mapping;
+	u32 current_slot;
+	u32 prev_lights_count;
+	u32 lights_count;
+	Array< u16 > empty_slots;
+	Array< Entity_ID > light_entities;
+};
 
 enum Map_State : u32 {
 	MapState_NotLoaded = 0,
@@ -43,7 +71,7 @@ struct Map {
 bool maps_init();
 void maps_shutdown();
 
-void maps_load();
+void maps_update_lights_manager();
 
 Map * map_load_from_file( StringView_ASCII name, StringView_ASCII file_path );
 Map * map_load_by_name( StringView_ASCII name );
@@ -62,5 +90,10 @@ Map * map_changing_to();
 
 Entity_ID map_entity_add( Map *map, Entity *entity );
 bool map_entity_remove( Map *map, Entity_ID entity_id );
+
+CArrayView map_stored_entities_of_type( Map *map, Entity_Type type );
+
+void lights_manager_init( Map *map, Renderer_Uniform_Buffer *uniform_buffer_lights );
+void lights_manager_destroy( Map *map );
 
 #endif /* QLIGHT_MAP */
