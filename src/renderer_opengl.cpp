@@ -284,9 +284,9 @@ setup_fullscreen_quad() {
 	Array< Renderer_Vertex_Attribute > attributes = array_new< Renderer_Vertex_Attribute >( sys_allocator, 1 );
 
 	array_add( &attributes, Renderer_Vertex_Attribute {
-		.name = "position",
+		.name = "texture_uv",
 		.index = 0,
-		.elements = 3,
+		.elements = 2,
 		.data_type = RendererDataType_f32,
 		.normalize = false,
 		.active = true
@@ -317,7 +317,7 @@ setup_fullscreen_quad() {
 		/*      data */ quad_vertices
 	);
 
-	carray_add_many( &quad_mesh.vertices, vertices_view );  // Bottom-left
+	carray_add_many( &quad_mesh.vertices, vertices_view );
 
 	u16 quad_indices[] = {
 		0, 1, 2,
