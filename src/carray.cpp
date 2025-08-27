@@ -73,15 +73,15 @@ u32 carray_resize(CArray *array, u32 new_capacity) {
 
 // Returns newly added item's index.
 u32 carray_add(CArray *array, void *item) {
-    if (array->size + 1 > array->capacity) {
-    	carray_resize(array, array->capacity * 2);
-    }
+	if (array->size + 1 > array->capacity) {
+		carray_resize(array, array->capacity * 2);
+	}
 
-    const u32 current_index = array->size * array->item_size;
-    memcpy( &array->data[ current_index ], item, array->item_size );
-    array->size++;
+	const u32 current_index = array->size * array->item_size;
+	memcpy( &array->data[ current_index ], item, array->item_size );
+	array->size++;
 
-    return current_index;
+	return current_index;
 }
 
 // Returns number of added items.
@@ -89,20 +89,17 @@ u32 carray_add_many(CArray *array, CArrayView source) {
 	// 1 enlargement might be not enough.
 	// TODO(nilsonragee): Sufficient size might be calculated once, but right now I'm lazy.
 	AssertMessage(array->item_size == source.item_size, "Item sizes must match");
-    while (array->size + source.size > array->capacity) {
-    	carray_resize(array, array->capacity * 2);
-    }
-
-	u32 source_idx = 0;
-	while (source_idx < source.size) {
-		u32 destination_idx = array->size * array->item_size;
-		array->data[destination_idx] = source.data[source_idx];
-		array->size += 1;
-		source_idx += source.item_size;
+	while (array->size + source.size > array->capacity) {
+		carray_resize(array, array->capacity * 2);
 	}
 
+	const u32 current_index = array->size * array->item_size;
+	const u32 copy_size = source.size * source.item_size;
+	memcpy( &array->data[ current_index ], source.data, copy_size );
+	array->size += source.size;
+
 	// Assume we always add all items since this is a dynamic array case.
-    return source.size;
+	return source.size;
 }
 
 u32 carray_add_repeat(CArray *array, void *item, u32 count) {
