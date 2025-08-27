@@ -106,7 +106,7 @@ struct Vertex_Quad {
 #define GL_ASSERT( expression )  \
 	GL_CLEAR_LOG_AND_EXECUTE( expression );  \
 	bool gl_call_generated_error = opengl_error_log( #expression, __FILE__, __LINE__ );  \
-	AssertMessage( gl_call_generated_error != GL_TRUE, #expression )
+	AssertMessage( gl_call_generated_error == GL_TRUE, #expression )
 
 #else /* QLIGHT_OPENGL_ERROR_CHECKS */
 #define GL_CLEAR_LOG_AND_EXECUTE( expression )  expression
