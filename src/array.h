@@ -66,7 +66,7 @@ ArrayView<T> array_view(Array<T> *array, u32 offset = 0, u32 count = 0) {
 template <typename T>
 ArrayView<T> array_view(T *data, u32 data_size, u32 offset = 0, u32 count = 0) {
 	AssertMessage(offset <= data_size, "ArrayView data offset is out of bounds");
-	return array_view_impl( data, data_size, offset, count );
+	return array_view_impl( data, data_size, count, offset );
 }
 
 template <typename T>
