@@ -1407,7 +1407,7 @@ geometry_pass_use_material( Material *material ) {
 		RendererDataType_s32,
 		&texture_specular_index
 	);
-	Texture_ID texture_specular_id = ( material->specular_map != INVALID_TEXTURE_ID ) ? material->specular_map : g_renderer.texture_black;
+	Texture_ID texture_specular_id = ( material->specular_map != INVALID_TEXTURE_ID ) ? material->specular_map : g_renderer.texture_white;
 	renderer_bind_texture( texture_specular_index, texture_specular_id );
 }
 
