@@ -457,6 +457,8 @@ int main()
 		/*   viewport */ { 1280, 720 }
 	);
 
+	renderer_set_camera_position_pointer( &g_camera->position );
+
 	// Add some entities
 	{
 		Entity_Directional_Light entity_sunlight;
