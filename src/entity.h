@@ -72,5 +72,10 @@ struct Entity_Spot_Light : Entity {
 	float shininess_exponent;
 };
 
+inline bool
+entity_type_is_light_source( Entity_Type type ) {
+	bool is_light = ( type == EntityType_DirectionalLight || type == EntityType_PointLight || type == EntityType_SpotLight );
+	return is_light;
+}
 
 #endif /* QLIGHT_ENTITY_H */

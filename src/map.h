@@ -90,6 +90,7 @@ Map * map_changing_to();
 
 Entity_ID map_entity_add( Map *map, Entity *entity );
 bool map_entity_remove( Map *map, Entity_ID entity_id );
+void map_entity_light_update( Map *map, Entity_Type type, Entity *storage_light_entity );
 
 CArrayView map_stored_entities_of_type( Map *map, Entity_Type type );
 

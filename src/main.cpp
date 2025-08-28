@@ -717,6 +717,7 @@ int main()
 
 					Entity_ID entity_id = map->entity_table.ids.data[ it_index ];
 					StringView_ASCII type_name = entity_type_name( it->type );
+					bool is_light_entity = entity_type_is_light_source( it->type );
 					if ( ImGui::TreeNode( (void*)(intptr_t)it_index, "%hu: " StringViewFormat, entity_id, StringViewArgument( type_name ) ) ) {
 						ImGui::Text( "Parent: %hu", it->parent );
 						if ( ImGui::TreeNode( "Bits" ) ) {
@@ -730,8 +731,12 @@ int main()
 							update |= ImGui::DragFloat3("Position", &t->position[ 0 ], 0.01f, -F32_MAX, F32_MAX, "%.1f", ImGuiSliderFlags_NoRoundToFormat);
 							update |= ImGui::DragFloat4("Rotation (Quaternion)", &t->rotation[ 0 ], 0.001f, -1.0f, 1.0f, "%.3f");
 							update |= ImGui::DragFloat3("Scale", &t->scale[ 0 ], 0.01f, 0.0f, 100.0f, "%.1f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_NoRoundToFormat);
-							if ( update )
+							if ( update ) {
 								transform_recalculate_matrices( &it->transform );
+								if ( is_light_entity ) {
+									map_entity_light_update( map, it->type, it );
+								}
+							}
 
 							ImGui::TreePop();
 						}

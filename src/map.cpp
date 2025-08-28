@@ -72,6 +72,11 @@ static void
 lights_manager_update() {
 	Lights_Manager *lights = &g_maps.lights_manager;
 	Map *map = g_maps.current;
+
+	lights->current_slot = 0;
+	lights->prev_lights_count = lights->lights_count;
+	lights->lights_count = 0;
+
 	CArrayView c_directional_lights = map_stored_entities_of_type( map, EntityType_DirectionalLight );
 	CArrayView c_point_lights = map_stored_entities_of_type( map, EntityType_PointLight );
 	CArrayView c_spot_lights = map_stored_entities_of_type( map, EntityType_SpotLight );
@@ -154,7 +159,7 @@ lights_manager_update() {
 
 	u32 lights_count_offset = offsetof( Uniform_Buffer_Lights, lights_count );
 	u32 *uniform_lights_count = ( u32 * )( ( u8 * )uniform_data + lights_count_offset );
-	lights->prev_lights_count = *uniform_lights_count;
+	// lights->prev_lights_count = *uniform_lights_count;
 	*uniform_lights_count = lights->lights_count;
 
 	g_maps.lights_manager_needs_update = false;
@@ -416,7 +421,19 @@ map_entity_remove( Map *map, Entity_ID entity_id ) {
 	carray_remove_at_pointer( entity_storage, entity );
 
 	bool removed = entity_table_remove( table, entity_id );
+
+	// TODO: Remove only this entity rather than update the whole lights manager.
+	g_maps.lights_manager_needs_update = true;
+
 	return removed;
+}
+
+void
+map_entity_light_update( Map *map, Entity_Type type, Entity *storage_light_entity ) {
+	Assert( entity_type_is_light_source( type ) );
+
+	// TODO: Update only this entity rather than update  the whole lights manager.
+	g_maps.lights_manager_needs_update = true;
 }
 
 CArrayView
