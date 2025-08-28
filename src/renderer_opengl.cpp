@@ -1497,7 +1497,7 @@ lighting_pass_use_material( Material *material ) {
 		material->shader_program,
 		"view_position",
 		RendererDataType_Vector3_f32,
-		&g_renderer.camera_position
+		g_renderer.camera_position
 	);
 
 	renderer_shader_program_set_uniform(
