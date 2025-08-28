@@ -719,6 +719,14 @@ renderer_init() {
 
 	create_default_textures();
 
+	// Set facet winding order to clockwise.
+	// Then, clockwise ordered facets are considered to be front-facing,
+	//   while counter-clockwise ordered to be back-facing.
+	glFrontFace( GL_CW );
+
+	// Enable back-facing facets culling.
+	glEnable( GL_CULL_FACE );
+
 	log_debug( "Renderer has been initialized." );
 	return true;
 }
