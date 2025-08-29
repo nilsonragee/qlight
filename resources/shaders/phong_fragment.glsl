@@ -77,15 +77,27 @@ void main()
 		if ( w != 1.0 )
 			light_direction = light_position;
 
-		// `dot( normal, light_direction` calculates the angle at which light comes to a surface normal.
-		//  1 (  0 degrees)  ->  light hits the surface _directly_, maximum brightness.
-		//  0 ( 90 degrees)  ->  light is _parallel_ to the surface, no diffuse effect.
-		// -1 (180 degrees)  ->  light comes from _behind_ the surface.
+		// `dot( normal, light_direction )` calculates how similar the vector directions are.
+		// The result takes "scaling" into account, for example:
+		//   `dot( vec2( 3, 0 ), vec2( 4, 0 ) ) == 12`.
+		// If the vectors are normalized, then the dot product is normalized as well in range [-1; 1], where:
+		//  1  ->  Vectors are pointing in the same exact direction.
+		//  0  ->  Vectors are pointing in perpendicular directions of each other.
+		// -1  ->  Vectors are pointing in opposite directions of each other.
+		// Some examples:
+		// `dot( vec2( 1, 0 ), vec2(  1, 0 ) ) == 1`.
+		// `dot( vec2( 1, 0 ), vec2(  0, 1 ) ) == 0`.
+		// `dot( vec2( 1, 0 ), vec2( -1, 0 ) ) == -1`.
+		//
+		// In the case of comparing light direction and surface normal direction:
+		//  1 (  0 degrees)  ->  Light hits the surface _directly_, full diffuse effect (100%).
+		//  0 ( 90 degrees)  ->  Light is _parallel_ to the surface, no diffuse effect (0%).
+		// -1 (180 degrees)  ->  Light comes from _behind_ the surface, inverted diffuse effect (-100%).
 		//
 		// Light coming from behind should not impact visible surface, that's why we clamp negatives to 0.
-		float diffuse_intensity = max( dot( normal, light_direction ), 0.0 ); // a.k.a. light_angle_in_radians
+		float diffuse_term = max( dot( normal, light_direction ), 0.0 );
 
-		vec3 diffuse_light = diffuse_intensity * diffuse * light_color;
+		vec3 diffuse_light = diffuse_term * diffuse * light_color;
 		final_color += diffuse_light * light_intensity;
 
 		/* Specular highlight */
