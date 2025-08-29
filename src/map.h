@@ -13,8 +13,7 @@
 struct Uniform_Buffer_Struct_Light {
 	Vector4_f32 position; // w=0: directional, w=1: positional
 	Vector4_f32 color;    // rgb: color, a: intensity
-	f32 shininess_exponent;
-	f32 _padding0[ 3 ]; // Align to 16 bytes.
+	// f32 _padding0[ 4 ]; // Align to 16 bytes.
 };
 
 #define MAX_LIGHT_SOURCES 32

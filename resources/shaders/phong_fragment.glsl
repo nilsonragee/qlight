@@ -32,13 +32,15 @@ uniform sampler2D gbuffer_position;
 uniform sampler2D gbuffer_normal;
 uniform sampler2D gbuffer_diffuse_specular;
 
-uniform     vec3 view_position;
-uniform     vec3 ambient; // ambient light color
+uniform vec3 view_position;
+uniform vec3 ambient; // ambient light color
+
+// TODO: Make 'Material' Uniform Buffer
+uniform float shininess_exponent;
 
 struct Light {
     vec4 position; // .w: positional -> 1, directional -> 0
     vec4 color; // .a: intensity
-    float shininess_exponent;
 };
 
 #define MAX_LIGHT_SOURCES 32
@@ -68,7 +70,6 @@ void main()
 		float w = lights[ i ].position.w;
 		vec3 light_color = lights[ i ].color.rgb;
 		float light_intensity = lights[ i ].color.a;
-		float shininess_exponent = lights[ i ].shininess_exponent;
 
 		/* Diffuse light */
 

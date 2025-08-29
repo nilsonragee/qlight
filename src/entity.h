@@ -63,13 +63,11 @@ struct Entity_Directional_Light : Entity {
 struct Entity_Point_Light : Entity {
 	Vector3_f32 color;
 	f32 intensity;
-	float shininess_exponent;
 };
 
 struct Entity_Spot_Light : Entity {
 	Vector3_f32 color;
 	f32 intensity;
-	float shininess_exponent;
 };
 
 inline bool

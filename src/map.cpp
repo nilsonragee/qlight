@@ -112,9 +112,8 @@ lights_manager_update() {
 
 		Uniform_Buffer_Struct_Light uniform_light = {
 			.position = position,
-			.color = color,
-			.shininess_exponent = it.shininess_exponent,
-			._padding0 = { 0 }
+			.color = color
+			// ._padding0 = { 0 }
 		};
 		data_lights[ light_idx ] = uniform_light;
 		lights->current_slot += 1;
@@ -130,9 +129,8 @@ lights_manager_update() {
 
 		Uniform_Buffer_Struct_Light uniform_light = {
 			.position = position,
-			.color = color,
-			.shininess_exponent = it.shininess_exponent,
-			._padding0 = { 0 }
+			.color = color
+			// ._padding0 = { 0 }
 		};
 		data_lights[ light_idx ] = uniform_light;
 		lights->current_slot += 1;
@@ -148,9 +146,8 @@ lights_manager_update() {
 
 		Uniform_Buffer_Struct_Light uniform_light = {
 			.position = position,
-			.color = color,
-			.shininess_exponent = it.shininess_exponent,
-			._padding0 = { 0 }
+			.color = color
+			// ._padding0 = { 0 }
 		};
 		data_lights[ light_idx ] = uniform_light;
 		lights->current_slot += 1;

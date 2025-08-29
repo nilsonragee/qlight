@@ -247,6 +247,11 @@ load_phong_lighting_shader() {
 		.data_type = RendererDataType_Vector3_f32,
 	} );
 
+	array_add( phong_uniforms, Renderer_Uniform {
+		.name = "shininess_exponent",
+		.data_type = RendererDataType_f32,
+	} );
+
 	renderer_shader_program_update_uniform_locations( shader );
 
 	/* Uniform Buffers */
@@ -293,6 +298,7 @@ void create_materials() {
 	Texture_ID diffuse = INVALID_TEXTURE_ID;
 	Texture_ID normal = INVALID_TEXTURE_ID;
 	Texture_ID specular = INVALID_TEXTURE_ID;
+	float shininess_exponent = 0.0f;
 
 //#define LOAD_TEXTURES
 #ifdef LOAD_TEXTURES
@@ -301,7 +307,8 @@ void create_materials() {
 	Assert( diffuse != INVALID_TEXTURE_ID );
 	Assert( normal != INVALID_TEXTURE_ID );
 #endif
-	material_create( "bark", shader, diffuse, normal, specular );
+	shininess_exponent = 64.0f;
+	material_create( "bark", shader, diffuse, normal, specular, shininess_exponent );
 
 #ifdef LOAD_TEXTURES
 	diffuse = texture_find( "dried-soil_diffuse" );
@@ -309,7 +316,8 @@ void create_materials() {
 	Assert( diffuse != INVALID_TEXTURE_ID );
 	Assert( normal != INVALID_TEXTURE_ID );
 #endif
-	material_create( "dried-soil", shader, diffuse, normal, specular );
+	shininess_exponent = 0.0f;
+	material_create( "dried-soil", shader, diffuse, normal, specular, shininess_exponent );
 
 #ifdef LOAD_TEXTURES
 	diffuse = texture_find( "rocks-medium_diffuse" );
@@ -317,7 +325,8 @@ void create_materials() {
 	Assert( diffuse != INVALID_TEXTURE_ID );
 	Assert( normal != INVALID_TEXTURE_ID );
 #endif
-	material_create( "rocks-medium", shader, diffuse, normal, specular );
+	shininess_exponent = 0.0f;
+	material_create( "rocks-medium", shader, diffuse, normal, specular, shininess_exponent );
 }
 
 // Not sure whether this is the right place...
@@ -472,8 +481,7 @@ int main()
 		entity_sunlight.transform.position.z = 10.0f;
 		// Entity_Directional_Light
 		entity_sunlight.color = { 244 / 255.0f, 233 / 255.0f, 155 / 255.0f };
-		entity_sunlight.intensity = 0.01f;
-		entity_sunlight.shininess_exponent = 16.0f;
+		entity_sunlight.intensity = 1.0f;
 		map_entity_add( map, &entity_sunlight );
 
 		Entity_Point_Light entity_point_light;
@@ -486,7 +494,6 @@ int main()
 		// Entity_Point_Light
 		entity_point_light.color = { 0.0f, 0.0f, 1.0f };
 		entity_point_light.intensity = 1.0f;
-		entity_point_light.shininess_exponent = 64.0f;
 		map_entity_add( map, &entity_point_light );
 
 		Entity_Camera entity_camera;

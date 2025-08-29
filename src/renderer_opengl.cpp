@@ -1515,6 +1515,13 @@ lighting_pass_use_material( Material *material ) {
 		&g_renderer.ambient_light
 	);
 
+	renderer_shader_program_set_uniform(
+		material->shader_program,
+		"shininess_exponent",
+		RendererDataType_f32,
+		&material->shininess_exponent
+	);
+
 	// Uniform_Buffer_Lights gets updated in `maps_lights_manager_update()`
 	//   every time light entity added/removed.
 }
