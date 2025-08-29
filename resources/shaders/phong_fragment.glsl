@@ -97,9 +97,9 @@ void main()
 		// Blinn-Phong - faster, softer highlight
 		if ( shininess_exponent > 0.0 ) {
 			vec3 halfway_direction = normalize( light_direction + view_direction );
-			float specular_term = pow( max( dot( view_direction, halfway_direction ), 0.0 ), shininess_exponent );
+			float specular_term = pow( max( dot( normal, halfway_direction ), 0.0 ), shininess_exponent );
 			vec3 specular_highlight = specular * specular_term * light_color;
-			final_color += specular_highlight * light_intensity;
+			final_color += specular_highlight;
 		}
 	}
 
