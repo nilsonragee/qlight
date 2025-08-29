@@ -91,8 +91,12 @@ void main()
 		/* Specular highlight */
 
 		// Phong - slower, sharper highlight
-		// vec3 reflection_direction = reflect( -light_direction, normal );
-		// float specular_intensity = max( dot( view_direction, reflection_direction ), 0.0 );
+		// if ( shininess_exponent > 0.0 ) {
+		// 	vec3 reflection_direction = reflect( -light_direction, normal );
+		// 	float specular_term = pow( max( dot( view_direction, reflection_direction ), 0.0 ), shininess_exponent );
+		// 	vec3 specular_highlight = specular * specular_term * light_color;
+		// 	final_color += specular_highlight * light_intensity;
+		// }
 
 		// Blinn-Phong - faster, softer highlight
 		if ( shininess_exponent > 0.0 ) {
