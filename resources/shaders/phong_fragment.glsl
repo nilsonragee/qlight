@@ -76,7 +76,7 @@ void main()
 		// TODO: Replace if-branching with Vector4 multiplication
 		vec3 light_direction = normalize( light_position - position );
 		if ( w != 1.0 )
-			light_direction = light_position;
+			light_direction = normalize( light_position );
 
 		// `dot( normal, light_direction )` calculates how similar the vector directions are.
 		// The result takes "scaling" into account, for example:
