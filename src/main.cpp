@@ -350,6 +350,150 @@ entity_type_name( Entity_Type type ) {
 	}
 }
 
+static bool
+imgui_entity_base_fields( Entity *entity ) {
+	ImGui::TextDisabled( "--- Entity ---" );
+	bool modified = false;
+
+	ImGui::InputScalar( "Parent", ImGuiDataType_U32, &entity->parent );
+	// ImGui::Text( "Parent: %hu", entity->parent );
+
+	if ( ImGui::TreeNode( "Bits" ) ) {
+		modified |= ImGui::CheckboxFlags( "NoDraw", ( u32 * )&entity->bits, EntityBit_NoDraw );
+
+		ImGui::TreePop();
+	}
+
+	if ( ImGui::TreeNode( "Transform" ) ) {
+		bool modified_transform = false;
+		Transform *t = &entity->transform;
+		modified_transform |= ImGui::DragFloat3("Position", &t->position[ 0 ], 0.01f, -F32_MAX, F32_MAX, "%.1f", ImGuiSliderFlags_NoRoundToFormat );
+		modified_transform |= ImGui::DragFloat4("Rotation (Quaternion)", &t->rotation[ 0 ], 0.001f, -1.0f, 1.0f, "%.3f" );
+		modified_transform |= ImGui::DragFloat3("Scale", &t->scale[ 0 ], 0.01f, 0.0f, 100.0f, "%.1f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_NoRoundToFormat );
+		modified |= modified_transform;
+
+		if ( modified_transform )
+			transform_recalculate_matrices( t );
+
+		ImGui::TreePop();
+	}
+
+	return modified;
+}
+
+static bool
+imgui_entity_player_fields( Entity_Player *player ) {
+	ImGui::TextDisabled( "--- Entity_Player ---" );
+	ImGui::Text( "Name: " StringViewFormat, StringViewArgument( player->name ) );
+	return false;
+}
+
+static bool
+imgui_camera_fields( Camera *camera ) {
+	return false;
+}
+
+static bool
+imgui_model_fields( Model *camera ) {
+	return false;
+}
+
+static bool
+imgui_entity_camera_fields( Entity_Camera *entity ) {
+	ImGui::TextDisabled( "--- Entity_Camera ---" );
+	bool modified = false;
+
+	ImGui::Text( "Name: " StringViewFormat, StringViewArgument( entity->name ) );
+	Camera *camera = entity->camera;
+	StringView_ASCII name = ( camera ) ? camera->name : string_view( ( const char * )NULL );
+	if ( ImGui::TreeNode( "Camera", "Camera Component: 0x%llX ('" StringViewFormat "')",
+		camera,
+		StringViewArgument( name )
+	) ) {
+		if ( camera )
+			modified |= imgui_camera_fields( camera );
+
+		ImGui::TreePop();
+	}
+	return modified;
+}
+
+static bool
+imgui_entity_static_object_fields( Entity_Static_Object *object ) {
+	ImGui::TextDisabled( "--- Entity_Static_Object ---" );
+	bool modified = false;
+	Model_ID model_id = object->model;
+	Model *model = model_instance( model_id );
+	if ( ImGui::TreeNode( "Model", "Model: %hu", model_id ) ) {
+		if ( model )
+			modified |= imgui_model_fields( model );
+
+		ImGui::TreePop();
+	}
+	return modified;
+}
+
+static bool
+imgui_entity_dynamic_object_fields( Entity_Dynamic_Object *object ) {
+	ImGui::TextDisabled( "--- Entity_Dynamic_Object ---" );
+	bool modified = false;
+	Model_ID model_id = object->model;
+	Model *model = model_instance( model_id );
+	if ( ImGui::TreeNode( "Model", "Model: %hu", model_id ) ) {
+		if ( model )
+			modified |= imgui_model_fields( model );
+
+		ImGui::TreePop();
+	}
+	return modified;
+}
+
+static bool
+imgui_entity_directional_light_fields( Entity_Directional_Light *light ) {
+	ImGui::TextDisabled( "--- Entity_Directional_Light ---" );
+	bool modified = false;
+	modified |= ImGui::DragFloat3( "Color", &light->color[ 0 ], 0.01f, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_NoRoundToFormat);
+	modified |= ImGui::DragFloat( "Intensity", &light->intensity, 0.01f, 0.0f, 100.0f, "%.2f", ImGuiSliderFlags_NoRoundToFormat);
+	return modified;
+}
+
+static bool
+imgui_entity_point_light_fields( Entity_Point_Light *light ) {
+	ImGui::TextDisabled( "--- Entity_Point_Light ---" );
+	bool modified = false;
+	modified |= ImGui::DragFloat3( "Color", &light->color[ 0 ], 0.01f, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_NoRoundToFormat);
+	modified |= ImGui::DragFloat( "Intensity", &light->intensity, 0.01f, 0.0f, 100.0f, "%.2f", ImGuiSliderFlags_NoRoundToFormat);
+	return modified;
+}
+
+static bool
+imgui_entity_spot_light_fields( Entity_Spot_Light *light ) {
+	ImGui::TextDisabled( "--- Entity_Spot_Light ---" );
+	bool modified = false;
+	modified |= ImGui::DragFloat3( "Color", &light->color[ 0 ], 0.01f, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_NoRoundToFormat);
+	modified |= ImGui::DragFloat( "Intensity", &light->intensity, 0.01f, 0.0f, 100.0f, "%.2f", ImGuiSliderFlags_NoRoundToFormat);
+	return modified;
+}
+
+static bool
+imgui_entity_derived_fields( Entity *entity ) {
+	switch ( entity->type ) {
+		case EntityType_Player:  return imgui_entity_player_fields( ( Entity_Player * )entity );
+		case EntityType_Camera:  return imgui_entity_camera_fields( ( Entity_Camera * )entity );
+		case EntityType_StaticObject:  return imgui_entity_static_object_fields( ( Entity_Static_Object * )entity );
+		case EntityType_DynamicObject:  return imgui_entity_dynamic_object_fields( ( Entity_Dynamic_Object * )entity );
+
+		case EntityType_DirectionalLight:  return imgui_entity_directional_light_fields( ( Entity_Directional_Light * )entity );
+		case EntityType_PointLight:  return imgui_entity_point_light_fields( ( Entity_Point_Light * )entity );
+		case EntityType_SpotLight:  return imgui_entity_spot_light_fields( ( Entity_Spot_Light * )entity );
+
+		case EntityType_None:
+		default:
+			AssertMessage( false, "Encountered 'None' or unhandled type of Entity while displaying entity fields in ImGui" );
+			return false;
+	}
+}
+
 int main()
 {
 	console_init( CP_UTF8 );
@@ -726,27 +870,15 @@ int main()
 					StringView_ASCII type_name = entity_type_name( it->type );
 					bool is_light_entity = entity_type_is_light_source( it->type );
 					if ( ImGui::TreeNode( (void*)(intptr_t)it_index, "%hu: " StringViewFormat, entity_id, StringViewArgument( type_name ) ) ) {
-						ImGui::Text( "Parent: %hu", it->parent );
-						if ( ImGui::TreeNode( "Bits" ) ) {
-							ImGui::CheckboxFlags( "NoDraw", ( u32 * )&it->bits, EntityBit_NoDraw );
+						bool modified = false;
+						bool is_light_entity = entity_type_is_light_source( it->type );
+						bool modified_base = imgui_entity_base_fields( it );
+						bool modified_derived = imgui_entity_derived_fields( it );
+						modified |= modified_base;
+						modified |= modified_derived;
+						if ( modified && is_light_entity )
+							map_entity_light_update( map, it->type, it );
 
-							ImGui::TreePop();
-						}
-						if ( ImGui::TreeNode( "Transform" ) ) {
-							bool update = false;
-							Transform *t = &it->transform;
-							update |= ImGui::DragFloat3("Position", &t->position[ 0 ], 0.01f, -F32_MAX, F32_MAX, "%.1f", ImGuiSliderFlags_NoRoundToFormat);
-							update |= ImGui::DragFloat4("Rotation (Quaternion)", &t->rotation[ 0 ], 0.001f, -1.0f, 1.0f, "%.3f");
-							update |= ImGui::DragFloat3("Scale", &t->scale[ 0 ], 0.01f, 0.0f, 100.0f, "%.1f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_NoRoundToFormat);
-							if ( update ) {
-								transform_recalculate_matrices( &it->transform );
-								if ( is_light_entity ) {
-									map_entity_light_update( map, it->type, it );
-								}
-							}
-
-							ImGui::TreePop();
-						}
 						if ( ImGui::Button( "Delete" ) ) {
 							map_entity_remove( map, entity_id );
 						}
