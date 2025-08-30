@@ -355,7 +355,7 @@ imgui_entity_base_fields( Entity *entity ) {
 	ImGui::TextDisabled( "--- Entity ---" );
 	bool modified = false;
 
-	ImGui::InputScalar( "Parent", ImGuiDataType_U32, &entity->parent );
+	ImGui::InputScalar( "Parent ID", ImGuiDataType_U16, &entity->parent );
 	// ImGui::Text( "Parent: %hu", entity->parent );
 
 	if ( ImGui::TreeNode( "Bits" ) ) {
