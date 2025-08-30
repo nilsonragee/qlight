@@ -452,7 +452,7 @@ static bool
 imgui_entity_directional_light_fields( Entity_Directional_Light *light ) {
 	ImGui::TextDisabled( "--- Entity_Directional_Light ---" );
 	bool modified = false;
-	modified |= ImGui::DragFloat3( "Color", &light->color[ 0 ], 0.01f, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_NoRoundToFormat);
+	modified |= ImGui::ColorEdit3( "Color", &light->color[ 0 ] );
 	modified |= ImGui::DragFloat( "Intensity", &light->intensity, 0.01f, 0.0f, 100.0f, "%.2f", ImGuiSliderFlags_NoRoundToFormat);
 	return modified;
 }
@@ -461,7 +461,7 @@ static bool
 imgui_entity_point_light_fields( Entity_Point_Light *light ) {
 	ImGui::TextDisabled( "--- Entity_Point_Light ---" );
 	bool modified = false;
-	modified |= ImGui::DragFloat3( "Color", &light->color[ 0 ], 0.01f, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_NoRoundToFormat);
+	modified |= ImGui::ColorEdit3( "Color", &light->color[ 0 ] );
 	modified |= ImGui::DragFloat( "Intensity", &light->intensity, 0.01f, 0.0f, 100.0f, "%.2f", ImGuiSliderFlags_NoRoundToFormat);
 	return modified;
 }
@@ -470,7 +470,7 @@ static bool
 imgui_entity_spot_light_fields( Entity_Spot_Light *light ) {
 	ImGui::TextDisabled( "--- Entity_Spot_Light ---" );
 	bool modified = false;
-	modified |= ImGui::DragFloat3( "Color", &light->color[ 0 ], 0.01f, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_NoRoundToFormat);
+	modified |= ImGui::ColorEdit3( "Color", &light->color[ 0 ] );
 	modified |= ImGui::DragFloat( "Intensity", &light->intensity, 0.01f, 0.0f, 100.0f, "%.2f", ImGuiSliderFlags_NoRoundToFormat);
 	return modified;
 }
