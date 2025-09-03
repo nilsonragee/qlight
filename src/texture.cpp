@@ -198,7 +198,7 @@ Texture_ID texture_find( StringView_ASCII name ) {
 			return it_index;
 	}}
 
-	return false;
+	return INVALID_TEXTURE_ID;
 }
 
 Texture * texture_instance( Texture_ID texture_id ) {
