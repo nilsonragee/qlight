@@ -16,15 +16,14 @@ u8 *Allocator::request_allocate(u64 count, u64 size, CallerInfo caller) {
 }
 
 u8 *Allocator::request_reallocate(void *memory_pointer, u64 old_count, u64 new_count, u64 size, CallerInfo caller) {
-	AssertMessage(memory_pointer, "Memory pointer is NULL");
 	u8 *reallocated = do_reallocate(memory_pointer, old_count, new_count, size, caller);
 	AssertMessage(reallocated, "Failed to reallocate");
 	return reallocated;
 }
 
 void Allocator::request_deallocate(void *memory_pointer, CallerInfo caller) {
-	AssertMessage(memory_pointer, "Memory pointer is NULL");
-	do_deallocate(memory_pointer, caller);
+	if ( memory_pointer )
+		do_deallocate(memory_pointer, caller);
 }
 
 u8 *System_Allocator::do_allocate(u64 count, u64 size, CallerInfo caller) {
