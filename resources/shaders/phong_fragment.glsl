@@ -65,7 +65,7 @@ void main()
 	vec3 ambient_light = diffuse * ambient;
 	vec3 final_color = ambient_light;
 
-	for ( int i = 0; i < MAX_LIGHT_SOURCES; i += 1 ) {
+	for ( int i = 0; i < lights_count; i += 1 ) {
 		vec3 light_position = lights[ i ].position.xyz;
 		float w = lights[ i ].position.w;
 		vec3 light_color = lights[ i ].color.rgb;
