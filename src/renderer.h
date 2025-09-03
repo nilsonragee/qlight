@@ -396,6 +396,7 @@ constexpr Renderer_Framebuffer_ID INVALID_FRAMEBUFFER_ID = U8_MAX;
 struct Renderer_Renderbuffer {
 	StringView_ASCII name;
 	Renderer_Framebuffer_Attachment_Point attachment_point;
+	GLenum opengl_storage_format;
 
 	// OpenGL-specific:
 	GLuint opengl_renderbuffer;
@@ -487,10 +488,9 @@ renderer_data_type_to_opengl_type( Renderer_Data_Type data_type );
 Renderer_Renderbuffer_ID
 renderer_create_renderbuffer(
 	StringView_ASCII name,
-	u32 width,
-	u32 height,
+	Vector2_u16 dimensions,
 	Renderer_Framebuffer_Attachment_Point attachment_point,
-	GLenum opengl_internal_format
+	GLenum opengl_storage_format
 );
 
 Renderer_Renderbuffer_ID
@@ -542,7 +542,7 @@ void
 renderer_set_projection_matrix_pointer( Matrix4x4_f32 *projection );
 
 Renderer_Framebuffer_Attachment_Point
-renderer_texture_format_to_framebuffer_attachment_point( Texture_Format format );
+renderer_texture_channels_to_framebuffer_attachment_point( Texture_Channels channels );
 
 bool
 renderer_framebuffer_color_attachment_point_is_valid( Renderer_Framebuffer_Attachment_Point color_attachment_point );
@@ -551,7 +551,14 @@ bool
 renderer_texture_attach_to_framebuffer( Texture_ID texture_id, Renderer_Framebuffer_ID framebuffer_id, Renderer_Framebuffer_Attachment_Point attachment_point );
 
 bool
-renderer_texture_upload( Texture_ID texture_id );
+renderer_texture_2d_upload(
+	Texture_ID texture_id,
+	Vector2_u16 origin,
+	Vector2_u16 dimensions,
+	u8 mipmap_levels,
+	GLint opengl_storage_format,
+	GLenum opengl_pixel_type
+);
 
 bool
 renderer_mesh_upload( Mesh_ID mesh_id );
@@ -560,7 +567,7 @@ bool
 renderer_model_meshes_upload( Model_ID model_id );
 
 GLenum
-renderer_texture_format_to_opengl( Texture_Format format );
+renderer_texture_channels_to_opengl( Texture_Channels channels );
 
 StringView_ASCII
 renderer_device_vendor();

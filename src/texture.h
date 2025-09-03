@@ -7,32 +7,39 @@
 #include "string.h"
 
 // maybe TextureComponents?
-enum Texture_Format : u16 {
-	TextureFormat_Unknown = 0,
+enum Texture_Channels : u16 {
+	TextureChannels_None = 0,
 
-	TextureFormat_Red,
-	TextureFormat_RG,
-	TextureFormat_RGB,
-	TextureFormat_RGBA,
+	TextureChannels_Red,
+	TextureChannels_RG,
+	TextureChannels_RGB,
+	TextureChannels_RGBA,
 
-	TextureFormat_BGR,
-	TextureFormat_BGRA,
+	TextureChannels_BGR,
+	TextureChannels_BGRA,
 
-	TextureFormat_Depth,
-	TextureFormat_Stencil,  // OpenGL 4.4+
-	TextureFormat_DepthStencil
+	TextureChannels_Depth,
+	TextureChannels_Stencil,  // OpenGL 4.4+
+	TextureChannels_DepthStencil
 };
 
 struct Texture {
 	StringView_ASCII name;
 	StringView_ASCII file_path;
-	u16 width;
-	u16 height;
-	// u8 color_channels;
-	Texture_Format format;
-	GLint opengl_internal_format;
-	GLenum opengl_pixel_type;
-	ArrayView< u8 > bytes;
+
+	// Texture resolution as it was loaded or created, before its upload to renderer.
+	Vector2_u16 original_dimensions;
+
+	// A rectangle defining a texture region that will be
+	//  stored when uploaded to the renderer (GPU).
+	Vector2_u16 dimensions;
+	Vector2_u16 origin;
+
+	u8 mipmap_levels;
+	Texture_Channels channels;
+	GLint opengl_storage_format;  // Sized internal storage format, for example: `GL_RGBA8`.
+	GLenum opengl_pixel_type;  // Pixel data type, for example: `GL_UNSIGNED_BYTE`.
+	Array< u8 > bytes;
 
 	// OpenGL-specific:
 	GLuint opengl_id;
@@ -46,14 +53,13 @@ void textures_shutdown();
 
 Texture_ID texture_create(
 	StringView_ASCII name,
-	u16 width,
-	u16 height,
-	Texture_Format format,
-	GLint opengl_internal_format,
-	GLenum opengl_pixel_type
+	Vector2_u16 dimensions,
+	Texture_Channels channels,
+	ArrayView< u8 > bytes,
+	Allocator *allocator
 );
 
-Texture_ID texture_load_from_file( StringView_ASCII name, StringView_ASCII file_path );
+Texture_ID texture_load_from_file( StringView_ASCII name, StringView_ASCII file_path, Texture_Channels desired_channels );
 Texture_ID texture_load_from_memory( StringView_ASCII name, ArrayView< u8 > memory );
 bool texture_destroy( Texture_ID texture_id );
 
@@ -61,9 +67,8 @@ Texture_ID texture_find( StringView_ASCII name );
 Texture * texture_instance( Texture_ID texture_id );
 
 // @TODO: Decouple from OpenGL
-// static GLenum _texture_format_to_opengl( Texture_Format format );
-u8 texture_format_channels( Texture_Format format );
-StringView_ASCII texture_format_name( Texture_Format format );
-StringView_ASCII opengl_internal_texture_format_name( GLint internal_format );
+// static GLenum _texture_channels_to_opengl( Texture_Channels channels );
+u8 texture_channels_count( Texture_Channels channels );
+StringView_ASCII texture_channels_name( Texture_Channels channels );
 
 #endif /* QLIGHT_TEXTURE_H */

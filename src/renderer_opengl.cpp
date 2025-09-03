@@ -23,6 +23,7 @@ struct Geometry_Buffer {
 	Texture_ID texture_normal;
 	Texture_ID texture_color_specular;  // 24-bit color, 8-bit specular combined
 	Renderer_Renderbuffer_ID renderbuffer_depth_stencil;  // 24-bit depth, 8-bit stencil combined
+	Vector2_u16 dimensions;
 };
 
 struct GL_Constants {
@@ -184,12 +185,25 @@ opengl_generate_and_bind_vertex_array( GLuint *id, StringView_ASCII debug_name )
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_VERTEX_ARRAY, *id, debug_name.size, debug_name.data );
-
-	log_debug_gl( "Generated and bound VAO '" StringViewFormat "' (#%u).",
+#endif
+	log_debug_gl( "Generated and bound VAO '" StringViewFormat "' (gl_id: %u).",
 		StringViewArgument( debug_name ),
 		*id
 	);
+}
+
+static void
+opengl_create_and_bind_vertex_array( GLuint *id, StringView_ASCII debug_name ) {
+	glCreateVertexArrays( 1, id );
+	glBindVertexArray( *id );
+#ifdef QLIGHT_DEBUG
+	if ( debug_name.size > 0 )
+		glObjectLabel( GL_VERTEX_ARRAY, *id, debug_name.size, debug_name.data );
 #endif
+	log_debug_gl( "Created and bound VAO '" StringViewFormat "' (gl_id: %u).",
+		StringViewArgument( debug_name ),
+		*id
+	);
 }
 
 static void
@@ -199,12 +213,25 @@ opengl_generate_and_bind_vertex_buffer( GLuint *id, StringView_ASCII debug_name 
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_BUFFER, *id, debug_name.size, debug_name.data );
-
-	log_debug_gl( "Generated and bound VBO '" StringViewFormat "' (#%u).",
+#endif
+	log_debug_gl( "Generated and bound VBO '" StringViewFormat "' (gl_id: %u).",
 		StringViewArgument( debug_name ),
 		*id
 	);
+}
+
+static void
+opengl_create_and_bind_vertex_buffer( GLuint *id, StringView_ASCII debug_name ) {
+	glCreateBuffers( 1, id );
+	glBindBuffer( GL_ARRAY_BUFFER, *id );
+#ifdef QLIGHT_DEBUG
+	if ( debug_name.size > 0 )
+		glObjectLabel( GL_BUFFER, *id, debug_name.size, debug_name.data );
 #endif
+	log_debug_gl( "Created and bound VBO '" StringViewFormat "' (gl_id: %u).",
+		StringViewArgument( debug_name ),
+		*id
+	);
 }
 
 static void
@@ -214,12 +241,25 @@ opengl_generate_and_bind_element_buffer( GLuint *id, StringView_ASCII debug_name
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_BUFFER, *id, debug_name.size, debug_name.data );
-
-	log_debug_gl( "Generated and bound EBO '" StringViewFormat "' (#%u).",
+#endif
+	log_debug_gl( "Generated and bound EBO '" StringViewFormat "' (gl_id: %u).",
 		StringViewArgument( debug_name ),
 		*id
 	);
+}
+
+static void
+opengl_create_and_bind_element_buffer( GLuint *id, StringView_ASCII debug_name ) {
+	glCreateBuffers( 1, id );
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, *id );
+#ifdef QLIGHT_DEBUG
+	if ( debug_name.size > 0 )
+		glObjectLabel( GL_BUFFER, *id, debug_name.size, debug_name.data );
 #endif
+	log_debug_gl( "Created and bound EBO '" StringViewFormat "' (gl_id: %u).",
+		StringViewArgument( debug_name ),
+		*id
+	);
 }
 
 static GLenum
@@ -232,59 +272,213 @@ index_type_size_to_opengl( u32 size ) {
 	}
 }
 
+static StringView_ASCII
+opengl_storage_format_name( GLint internal_format ) {
+	switch ( internal_format ) {
+		// Base Internal Formats
+		case GL_DEPTH_COMPONENT: return "GL_DEPTH_COMPONENT";
+		case GL_DEPTH_STENCIL: return "GL_DEPTH_STENCIL";
+		case GL_RED: return "GL_RED";
+		case GL_RG: return "GL_RG";
+		case GL_RGB: return "GL_RGB";
+		case GL_RGBA: return "GL_RGBA";
+
+		// Sized Internal Formats
+		case GL_R8: return "GL_R9";
+		case GL_R8_SNORM: return "GL_R8_SNORM";
+		case GL_R16: return "GL_R16";
+		case GL_R16_SNORM: return "GL_R16_SNORM";
+		case GL_RG8: return "GL_RG9";
+		case GL_RG8_SNORM: return "GL_RG8_SNORM";
+		case GL_RG16: return "GL_RG16";
+		case GL_RG16_SNORM: return "GL_RG16_SNORM";
+		case GL_R3_G3_B2: return "GL_R3_G3_B2";
+		case GL_RGB4: return "GL_RGB4";
+		case GL_RGB5: return "GL_RGB5";
+		case GL_RGB8: return "GL_RGB8";
+		case GL_RGB8_SNORM: return "GL_RGB8_SNORM";
+		case GL_RGB10: return "GL_RGB10";
+		case GL_RGB12: return "GL_RGB12";
+		case GL_RGB16_SNORM: return "GL_RGB16_SNORM";
+		case GL_RGBA2: return "GL_RGBA2";
+		case GL_RGBA4: return "GL_RGBA4";
+		case GL_RGB5_A1: return "GL_RGB5_A1";
+		case GL_RGBA8: return "GL_RGBA8";
+		case GL_RGBA8_SNORM: return "GL_RGBA8_SNORM";
+		case GL_RGB10_A2: return "GL_RGB10_A2";
+		case GL_RGB10_A2UI: return "GL_RGB10_A2UI";
+		case GL_RGBA12: return "GL_RGBA12";
+		case GL_RGBA16: return "GL_RGBA16";
+		case GL_SRGB8: return "GL_SRGB8";
+		case GL_SRGB8_ALPHA8: return "GL_SRGB8_ALPHA8";
+		case GL_R16F: return "GL_R16F";
+		case GL_RG16F: return "GL_RG16F";
+		case GL_RGB16F: return "GL_RGB16F";
+		case GL_RGBA16F: return "GL_RGBA16F";
+		case GL_R32F: return "GL_R32F";
+		case GL_RG32F: return "GL_RG32F";
+		case GL_RGB32F: return "GL_RGB32F";
+		case GL_RGBA32F: return "GL_RGBA32F";
+		case GL_R11F_G11F_B10F: return "GL_R11F_G11F_B10F";
+		case GL_RGB9_E5: return "GL_RGB9_E5";
+		case GL_R8I: return "GL_R8I";
+		case GL_R8UI: return "GL_R8UI";
+		case GL_R16I: return "GL_R16I";
+		case GL_R16UI: return "GL_R16UI";
+		case GL_R32I: return "GL_R32I";
+		case GL_R32UI: return "GL_R32UI";
+		case GL_RG8I: return "GL_RG8I";
+		case GL_RG8UI: return "GL_RG8UI";
+		case GL_RG16I: return "GL_RG16I";
+		case GL_RG16UI: return "GL_RG16UI";
+		case GL_RG32I: return "GL_RG32I";
+		case GL_RG32UI: return "GL_RG32UI";
+		case GL_RGB8I: return "GL_RGB8I";
+		case GL_RGB8UI: return "GL_RGB8UI";
+		case GL_RGB16I: return "GL_RGB16I";
+		case GL_RGB16UI: return "GL_RGB16UI";
+		case GL_RGB32I: return "GL_RGB32I";
+		case GL_RGB32UI: return "GL_RGB32UI";
+		case GL_RGBA8I: return "GL_RGBA8I";
+		case GL_RGBA8UI: return "GL_RGBA8UI";
+		case GL_RGBA16I: return "GL_RGBA16I";
+		case GL_RGBA16UI: return "GL_RGBA16UI";
+		case GL_RGBA32I: return "GL_RGBA32I";
+		case GL_RGBA32UI: return "GL_RGBA32UI";
+
+		// Compressed Internal Formats
+		case GL_COMPRESSED_RED: return "GL_COMPRESSED_RED";
+		case GL_COMPRESSED_RG: return "GL_COMPRESSED_RG";
+		case GL_COMPRESSED_RGB: return "GL_COMPRESSED_RGB";
+		case GL_COMPRESSED_RGBA: return "GL_COMPRESSED_RGBA";
+		case GL_COMPRESSED_SRGB: return "GL_COMPRESSED_SRGB";
+		case GL_COMPRESSED_SRGB_ALPHA: return "GL_COMPRESSED_SRGB_ALPHA";
+		case GL_COMPRESSED_RED_RGTC1: return "GL_COMPRESSED_RED_RGTC1";
+		case GL_COMPRESSED_SIGNED_RED_RGTC1: return "GL_COMPRESSED_SIGNED_RED_RGTC1";
+		case GL_COMPRESSED_RG_RGTC2: return "GL_COMPRESSED_RG_RGTC2";
+		case GL_COMPRESSED_SIGNED_RG_RGTC2: return "GL_COMPRESSED_SIGNED_RG_RGTC2";
+		case GL_COMPRESSED_RGBA_BPTC_UNORM: return "GL_COMPRESSED_RGBA_BPTC_UNORM";
+		case GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM: return "GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM";
+		case GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT: return "GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT";
+		case GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT: return "GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT";
+
+		case GL_DEPTH24_STENCIL8: return "GL_DEPTH24_STENCIL8";
+
+		default: return "(unknown)";
+	}
+}
+
+static StringView_ASCII
+opengl_pixel_type_name( GLenum pixel_type ) {
+	switch ( pixel_type ) {
+		// 1 byte
+		case GL_UNSIGNED_BYTE: return  "GL_UNSIGNED_BYTE";
+		case GL_BYTE:  return "GL_BYTE";
+
+		case GL_UNSIGNED_BYTE_3_3_2:  return "GL_UNSIGNED_BYTE_3_3_2";
+		case GL_UNSIGNED_BYTE_2_3_3_REV:  return "GL_UNSIGNED_BYTE_2_3_3_REV";
+
+		// 2 bytes
+		case GL_UNSIGNED_SHORT:  return "GL_UNSIGNED_SHORT";
+		case GL_SHORT:  return "GL_SHORT";
+
+		case GL_UNSIGNED_SHORT_5_6_5:  return "GL_UNSIGNED_SHORT_5_6_5";
+		case GL_UNSIGNED_SHORT_5_6_5_REV:  return "GL_UNSIGNED_SHORT_5_6_5_REV";
+		case GL_UNSIGNED_SHORT_4_4_4_4:  return "GL_UNSIGNED_SHORT_4_4_4_4";
+		case GL_UNSIGNED_SHORT_4_4_4_4_REV:  return "GL_UNSIGNED_SHORT_4_4_4_4_REV";
+		case GL_UNSIGNED_SHORT_5_5_5_1:  return "GL_UNSIGNED_SHORT_5_5_5_1";
+		case GL_UNSIGNED_SHORT_1_5_5_5_REV:  return "GL_UNSIGNED_SHORT_1_5_5_5_REV";
+
+		// 4 bytes
+		case GL_UNSIGNED_INT:  return "GL_UNSIGNED_INT";
+		case GL_INT:  return "GL_INT";
+		case GL_FLOAT:  return "GL_FLOAT";
+
+		case GL_UNSIGNED_INT_8_8_8_8:  return "GL_UNSIGNED_INT_8_8_8_8";
+		case GL_UNSIGNED_INT_8_8_8_8_REV:  return "GL_UNSIGNED_INT_8_8_8_8_REV";
+		case GL_UNSIGNED_INT_10_10_10_2:  return "GL_UNSIGNED_INT_10_10_10_2";
+		case GL_UNSIGNED_INT_2_10_10_10_REV:  return "GL_UNSIGNED_INT_2_10_10_10_REV";
+
+		default:  return "(unknown)";
+	}
+}
+
 static void
 create_default_textures() {
 	log_debug( "Creating default textures..." );
+
+	/* White Texture */
+
+	u8 white_bytes[] = { /* R */ 255, /* G */ 255, /* B */ 255, /* A */ 255 };
+	ArrayView< u8 > white_bytes_view = array_view< u8 >( white_bytes, ARRAY_SIZE( white_bytes ) );
 	Texture_ID white_texture_id = texture_create(
-		/*                   name */ "White Texture",
-		/*                  width */ 1,
-		/*                 height */ 1,
-		/*                 format */ TextureFormat_RGBA,
-		/* opengl_internal_format */ GL_RGBA8,
-		/*      opengl_pixel_type */ GL_UNSIGNED_BYTE
+		/*       name */ "White Texture",
+		/* dimensions */ { 1, 1 },
+		/*   channels */ TextureChannels_RGBA,
+		/*      bytes */ white_bytes_view,
+		/*  allocator */ NULL
 	);
 	Texture *white_texture = texture_instance( white_texture_id );
-	u8 white_bytes[] = { /* R */ 255, /* G */ 255, /* B */ 255, /* A */ 255 };
-	white_texture->bytes.data = white_bytes;
-	white_texture->bytes.size = ARRAY_SIZE( white_bytes );
-	renderer_texture_upload( white_texture_id );
+	renderer_texture_2d_upload(
+		/*            texture_id */ white_texture_id,
+		/*                origin */ { 0, 0 },
+		/*            dimensions */ white_texture->dimensions,
+		/*         mipmap_levels */ 1,
+		/* opengl_storage_format */ GL_RGBA8,
+		/*     opengl_pixel_type */ GL_UNSIGNED_BYTE
+	);
 	g_renderer.texture_white = white_texture_id;
 
+	/* Black Texture */
+
+	u8 black_bytes[] = { /* R */ 0, /* G */ 0, /* B */ 0, /* A */ 255 };
+	ArrayView< u8 > black_bytes_view = array_view< u8 >( black_bytes, ARRAY_SIZE( black_bytes ) );
 	Texture_ID black_texture_id = texture_create(
-		/*                   name */ "Black Texture",
-		/*                  width */ 1,
-		/*                 height */ 1,
-		/*                 format */ TextureFormat_RGBA,
-		/* opengl_internal_format */ GL_RGBA8,
-		/*      opengl_pixel_type */ GL_UNSIGNED_BYTE
+		/*       name */ "Black Texture",
+		/* dimensions */ { 1, 1 },
+		/*   channels */ TextureChannels_RGBA,
+		/*      bytes */ black_bytes_view,
+		/*  allocator */ NULL
 	);
 	Texture *black_texture = texture_instance( black_texture_id );
-	u8 black_bytes[] = { /* R */ 0, /* G */ 0, /* B */ 0, /* A */ 255 };
-	black_texture->bytes.data = black_bytes;
-	black_texture->bytes.size = ARRAY_SIZE( black_bytes );
-	renderer_texture_upload( black_texture_id );
+	renderer_texture_2d_upload(
+		/*            texture_id */ black_texture_id,
+		/*                origin */ { 0, 0 },
+		/*            dimensions */ black_texture->dimensions,
+		/*         mipmap_levels */ 1,
+		/* opengl_storage_format */ GL_RGBA8,
+		/*     opengl_pixel_type */ GL_UNSIGNED_BYTE
+	);
 	g_renderer.texture_black = black_texture_id;
 
-	Texture_ID purple_texture_id = texture_create(
-		/*                   name */ "Purple Checkers Texture",
-		/*                  width */ 2,
-		/*                 height */ 2,
-		/*                 format */ TextureFormat_RGBA,
-		/* opengl_internal_format */ GL_RGBA8,
-		/*      opengl_pixel_type */ GL_UNSIGNED_BYTE
-	);
-	Texture *purple_texture = texture_instance( purple_texture_id );
-	u8 purple_checkers_bytes[] = {
+	/* Purple Checkboard Texture */
+
+	u8 checkboard_bytes[] = {
 		// R    G    B    A
 		   130, 0,   200, 255,  // (purple pixel)
 		   0,   0,   0,   255,  // ( black pixel)
 		   0,   0,   0,   255,  // ( black pixel)
 		   130, 0,   200, 255   // (purple pixel)
 	};
-	purple_texture->bytes.data = purple_checkers_bytes;
-	purple_texture->bytes.size = ARRAY_SIZE( purple_checkers_bytes );
-	renderer_texture_upload( purple_texture_id );
-	g_renderer.texture_purple_checkers = purple_texture_id;
+	ArrayView< u8 > checkboard_view = array_view< u8 >( checkboard_bytes, ARRAY_SIZE( checkboard_bytes ) );
+	Texture_ID checkboard_texture_id = texture_create(
+		/*       name */ "Purple Checkboard Texture",
+		/* dimensions */ { 2, 2 },
+		/*   channels */ TextureChannels_RGBA,
+		/*      bytes */ checkboard_view,
+		/*  allocator */ NULL
+	);
+	Texture *checkboard_texture = texture_instance( checkboard_texture_id );
+	renderer_texture_2d_upload(
+		/*            texture_id */ checkboard_texture_id,
+		/*                origin */ { 0, 0 },
+		/*            dimensions */ checkboard_texture->dimensions,
+		/*         mipmap_levels */ 1,
+		/* opengl_storage_format */ GL_RGBA8,
+		/*     opengl_pixel_type */ GL_UNSIGNED_BYTE
+	);
+	g_renderer.texture_purple_checkers = checkboard_texture_id;
+
 	log_debug( "Default textures have been created." );
 }
 
@@ -451,6 +645,11 @@ load_geometry_buffer_shader( StringView_ASCII vertex_stage_filepath, StringView_
 	} );
 
 	array_add( uniforms, Renderer_Uniform {
+		.name = "texture_normal0",
+		.data_type = RendererDataType_s32, // Sampler2D
+	} );
+
+	array_add( uniforms, Renderer_Uniform {
 		.name = "texture_specular0",
 		.data_type = RendererDataType_s32, // Sampler2D
 	} );
@@ -461,54 +660,79 @@ load_geometry_buffer_shader( StringView_ASCII vertex_stage_filepath, StringView_
 
 // TODO: recreate_geometry_buffer; resize existing attachment textures
 static void
-setup_geometry_buffer( u16 framebuffer_width, u16 framebuffer_height ) {
+setup_geometry_buffer( Vector2_u16 framebuffer_dimensions ) {
 	log_debug( "Setting up Geometry Buffer..." );
 	g_renderer.gbuffer.framebuffer = renderer_create_framebuffer( "gbuffer_framebuffer" );
+	g_renderer.gbuffer.dimensions = framebuffer_dimensions;
 
 	g_renderer.gbuffer.shader_program = load_geometry_buffer_shader(
 		"resources/shaders/geometry_vertex.glsl",
 		"resources/shaders/geometry_fragment.glsl"
 	);
 
+	/* G-Buffer Position texture */
+
 	g_renderer.gbuffer.texture_position = texture_create(
-		"gbuffer_position",
-		framebuffer_width,
-		framebuffer_height,
-		TextureFormat_RGB,
-		GL_RGB16F,
-		GL_FLOAT
+		/*       name */ "gbuffer_position",
+		/* dimensions */ framebuffer_dimensions,
+		/*   channels */ TextureChannels_RGB,
+		/*      bytes */ ArrayView< u8 > {},
+		/*  allocator */ NULL
 	);
-	renderer_texture_upload( g_renderer.gbuffer.texture_position );
+	renderer_texture_2d_upload(
+		/*             texture_id */ g_renderer.gbuffer.texture_position,
+		/*                origin */ { 0, 0 },
+		/*            dimensions */ framebuffer_dimensions,
+		/*         mipmap_levels */ 1,
+		/* opengl_storage_format */ GL_RGB16F,
+		/*    opengl_pixel_type  */ GL_FLOAT
+	);
 	renderer_texture_attach_to_framebuffer(
 		g_renderer.gbuffer.texture_position,
 		g_renderer.gbuffer.framebuffer,
 		RendererFramebufferAttachmentPoint_Color0
 	);
 
+	/* G-Buffer Normal texture */
+
 	g_renderer.gbuffer.texture_normal = texture_create(
-		"gbuffer_normal",
-		framebuffer_width,
-		framebuffer_height,
-		TextureFormat_RGB,
-		GL_RGB16F,
-		GL_FLOAT
+		/*       name */ "gbuffer_normal",
+		/* dimensions */ framebuffer_dimensions,
+		/*   channels */ TextureChannels_RGB,
+		/*      bytes */ ArrayView< u8 > {},
+		/*  allocator */ NULL
 	);
-	renderer_texture_upload( g_renderer.gbuffer.texture_normal );
+	renderer_texture_2d_upload(
+		/*            texture_id */ g_renderer.gbuffer.texture_normal,
+		/*                origin */ { 0, 0 },
+		/*            dimensions */ framebuffer_dimensions,
+		/*         mipmap_levels */ 1,
+		/* opengl_storage_format */ GL_RGB16F,
+		/*    opengl_pixel_type  */ GL_FLOAT
+	);
 	renderer_texture_attach_to_framebuffer(
 		g_renderer.gbuffer.texture_normal,
 		g_renderer.gbuffer.framebuffer,
 		RendererFramebufferAttachmentPoint_Color1
 	);
 
+	/* G-Buffer Color/Specular texture */
+
 	g_renderer.gbuffer.texture_color_specular = texture_create(
-		"gbuffer_color_specular",
-		framebuffer_width,
-		framebuffer_height,
-		TextureFormat_RGBA,
-		GL_RGBA8,
-		GL_UNSIGNED_BYTE
+		/*       name */ "gbuffer_color_specular",
+		/* dimensions */ framebuffer_dimensions,
+		/*   channels */ TextureChannels_RGBA,
+		/*      bytes */ ArrayView< u8 > {},
+		/*  allocator */ NULL
 	);
-	renderer_texture_upload( g_renderer.gbuffer.texture_color_specular );
+	renderer_texture_2d_upload(
+		/*            texture_id */ g_renderer.gbuffer.texture_color_specular,
+		/*                origin */ { 0, 0 },
+		/*            dimensions */ framebuffer_dimensions,
+		/*         mipmap_levels */ 1,
+		/* opengl_storage_format */ GL_RGBA8,
+		/*    opengl_pixel_type  */ GL_UNSIGNED_BYTE
+	);
 	renderer_texture_attach_to_framebuffer(
 		g_renderer.gbuffer.texture_color_specular,
 		g_renderer.gbuffer.framebuffer,
@@ -520,28 +744,26 @@ setup_geometry_buffer( u16 framebuffer_width, u16 framebuffer_height ) {
 		RendererFramebufferAttachmentPoint_Color1,  // normal
 		RendererFramebufferAttachmentPoint_Color2   // color + specular
 	};
-	u32 active_attachment_points_size = ARRAY_SIZE( active_attachment_points );
 
 	renderer_set_active_framebuffer_color_attachment_points(
 		g_renderer.gbuffer.framebuffer,
-		ArrayView< Renderer_Framebuffer_Attachment_Point > {
-			.size = active_attachment_points_size,
-			.data = active_attachment_points
-		}
+		array_view( active_attachment_points, ARRAY_SIZE( active_attachment_points ) )
 	);
 
+	/* G-Buffer Depth/Stencil Renderbuffer */
+
 	g_renderer.gbuffer.renderbuffer_depth_stencil = renderer_create_renderbuffer(
-		"gbuffer_depth_stencil",
-		framebuffer_width,
-		framebuffer_height,
-		RendererFramebufferAttachmentPoint_DepthStencil,
-		GL_DEPTH24_STENCIL8
+		/*                  name */"gbuffer_depth_stencil",
+		/*            dimensions */ framebuffer_dimensions,
+		/*      attachment_point */ RendererFramebufferAttachmentPoint_DepthStencil,
+		/* opengl_storage_format */ GL_DEPTH24_STENCIL8
 	);
 	renderer_renderbuffer_attach_to_framebuffer(
 		g_renderer.gbuffer.framebuffer,
 		g_renderer.gbuffer.renderbuffer_depth_stencil,
 		RendererFramebufferAttachmentPoint_DepthStencil
 	);
+
 	log_debug( "Geometry Buffer has been set up." );
 }
 
@@ -702,9 +924,8 @@ renderer_init() {
 	g_renderer.device.name = string_view( ( const char * )glGetString( GL_RENDERER ) );
 
 	renderer_create_default_framebuffer();
-	constexpr u16 TEMP_WIDTH = 1280;
-	constexpr u16 TEMP_HEIGHT = 720;
-	setup_geometry_buffer( TEMP_WIDTH, TEMP_HEIGHT );
+	constexpr Vector2_u16 TEMP_dimensions = { 1280, 720 };
+	setup_geometry_buffer( TEMP_dimensions );
 	setup_fullscreen_quad();
 
 	g_renderer.output_channel = RendererOutputChannel_FinalColor;
@@ -1147,14 +1368,14 @@ renderer_data_type_to_opengl_type( Renderer_Data_Type data_type ) {
 Renderer_Renderbuffer_ID
 renderer_create_renderbuffer(
 	StringView_ASCII name,
-	u32 width,
-	u32 height,
+	Vector2_u16 dimensions,
 	Renderer_Framebuffer_Attachment_Point attachment_point,
-	GLenum opengl_internal_format
+	GLenum opengl_storage_format
 ) {
 	Renderer_Renderbuffer renderbuffer = {
 		.name = name,
-		.attachment_point = attachment_point
+		.attachment_point = attachment_point,
+		.opengl_storage_format = opengl_storage_format
 		// .opengl_renderbuffer
 	};
 
@@ -1167,19 +1388,19 @@ renderer_create_renderbuffer(
 	// glRenderbufferStorage( GL_RENDERBUFFER, ... );
 	glNamedRenderbufferStorage(
 		/*   renderbuffer */ renderbuffer.opengl_renderbuffer,
-		/* internalformat */ opengl_internal_format,
-		/*          width */ static_cast< GLsizei >( width ),
-		/*         height */ static_cast< GLsizei >( height )
+		/* internalformat */ opengl_storage_format,
+		/*          width */ ( GLsizei )dimensions.width,
+		/*         height */ ( GLsizei )dimensions.height
 	);
 
 	u32 renderbuffer_idx = array_add( &g_renderer.renderbuffers, renderbuffer );
 	StringView_ASCII attachment_point_name = renderer_framebuffer_attachment_point_name( renderbuffer.attachment_point );
-	StringView_ASCII format_name = opengl_internal_texture_format_name( opengl_internal_format );
-	log_info( "Created Renderbuffer '" StringViewFormat "' (#%u, %ux%u, " StringViewFormat ", " StringViewFormat ").",
+	StringView_ASCII format_name = opengl_storage_format_name( opengl_storage_format );
+	log_info( "Created Renderbuffer '" StringViewFormat "' (#%u, %hux%hu, " StringViewFormat ", " StringViewFormat ").",
 		StringViewArgument( renderbuffer.name ),
 		renderbuffer_idx,
-		width,
-		height,
+		dimensions.width,
+		dimensions.height,
 		StringViewArgument( attachment_point_name ),
 		StringViewArgument( format_name )
 	);
@@ -1393,22 +1614,21 @@ geometry_pass_use_material( Material *material ) {
 
 	/* Normal map texture */
 
-	/*
-	s32 texture_normal_index = 0; // make configurable
+	// uniform sampler2D texture_normal0;
+	s32 texture_normal_index = 1; // make configurable
 	renderer_shader_program_set_uniform(
 		gbuffer_shader,
 		"texture_normal0",
 		RendererDataType_s32,
 		&texture_normal_index
 	);
-	Texture_ID texture_normal_id = ( material->normal_map != INVALID_TEXTURE_ID ) material->normal_map : g_renderer.texture_black;
-	renderer_bind_texture( diffuse_texture_index, texture_normal_id );
-	*/
+	Texture_ID texture_normal_id = ( material->normal_map != INVALID_TEXTURE_ID ) ? material->normal_map : g_renderer.texture_white;
+	renderer_bind_texture( texture_normal_index, texture_normal_id );
 
 	/* Specular map texture */
 
 	// uniform sampler2D texture_specular0;
-	s32 texture_specular_index = 1; // make configurable
+	s32 texture_specular_index = 2; // make configurable
 	renderer_shader_program_set_uniform(
 		gbuffer_shader,
 		"texture_specular0",
@@ -1454,6 +1674,8 @@ draw_pass_geometry() {
 
 	renderer_bind_framebuffer( g_renderer.gbuffer.framebuffer );
 	Renderer_Framebuffer *geometry_framebuffer = renderer_framebuffer_instance( g_renderer.gbuffer.framebuffer );
+	Vector2_u16 dimensions = g_renderer.gbuffer.dimensions;
+	glViewport( 0, 0, ( GLsizei )dimensions.width, ( GLsizei )dimensions.height );
 
 	// Clear Geometry framebuffer Position attachment texture
 	glClearNamedFramebufferfv(
@@ -1584,8 +1806,13 @@ static void
 draw_pass_lighting() {
 	glDisable( GL_DEPTH_TEST );
 
+	// Fullscreen Quad is in clockwise winding order, it will not be culled.
+	// glDisable( GL_CULL_FACE );
+
 	renderer_bind_framebuffer( 0 ); // Default framebuffer
 	Renderer_Framebuffer *default_framebuffer = renderer_framebuffer_instance( 0 );
+	Vector2_u16 dimensions = { ( u16 )screen.width, ( u16 )screen.height };
+	glViewport( 0, 0, ( GLsizei )dimensions.width, ( GLsizei )dimensions.height );
 
 	// Clear Backbuffer framebuffer color attachment texture
 	glClearNamedFramebufferfv(
@@ -1763,18 +1990,18 @@ renderer_set_projection_matrix_pointer( Matrix4x4_f32 *projection ) {
 }
 
 Renderer_Framebuffer_Attachment_Point
-renderer_texture_format_to_framebuffer_attachment_point( Texture_Format format ) {
-	switch ( format ) {
-		case TextureFormat_Red:
-		case TextureFormat_RG:
-		case TextureFormat_RGB:
-		case TextureFormat_RGBA:          return RendererFramebufferAttachmentPoint_Color0;
+renderer_texture_channels_to_framebuffer_attachment_point( Texture_Channels channels ) {
+	switch ( channels ) {
+		case TextureChannels_Red:
+		case TextureChannels_RG:
+		case TextureChannels_RGB:
+		case TextureChannels_RGBA:          return RendererFramebufferAttachmentPoint_Color0;
 
-		case TextureFormat_Depth:         return RendererFramebufferAttachmentPoint_Depth;
-		case TextureFormat_Stencil:       return RendererFramebufferAttachmentPoint_Stencil;
-		case TextureFormat_DepthStencil:  return RendererFramebufferAttachmentPoint_DepthStencil;
+		case TextureChannels_Depth:         return RendererFramebufferAttachmentPoint_Depth;
+		case TextureChannels_Stencil:       return RendererFramebufferAttachmentPoint_Stencil;
+		case TextureChannels_DepthStencil:  return RendererFramebufferAttachmentPoint_DepthStencil;
 
-		case TextureFormat_Unknown:
+		case TextureChannels_None:
 		default:                          return RendererFramebufferAttachmentPoint_None;
 	}
 }
@@ -1792,7 +2019,7 @@ bool
 renderer_texture_attach_to_framebuffer( Texture_ID texture_id, Renderer_Framebuffer_ID framebuffer_id, Renderer_Framebuffer_Attachment_Point attachment_point ) {
 	Texture *texture = texture_instance( texture_id );
 	Renderer_Framebuffer *framebuffer = renderer_framebuffer_instance( framebuffer_id );
-	Renderer_Framebuffer_Attachment_Point expected_attachment_point = renderer_texture_format_to_framebuffer_attachment_point( texture->format );
+	Renderer_Framebuffer_Attachment_Point expected_attachment_point = renderer_texture_channels_to_framebuffer_attachment_point( texture->channels );
 	if ( expected_attachment_point == RendererFramebufferAttachmentPoint_Color0 ) {
 		// This is a Color attachment.
 		bool is_valid_color_attachment = renderer_framebuffer_color_attachment_point_is_valid( attachment_point );
@@ -1849,7 +2076,20 @@ opengl_create_and_bind_texture_2d( GLuint *id, StringView_ASCII debug_name ) {
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_TEXTURE, *id, debug_name.size, debug_name.data );
-	log_debug_gl( "Created and bound 2D Texture '" StringViewFormat "' (#%u).",
+	log_debug_gl( "Created and bound 2D Texture '" StringViewFormat "' (gl_id: %u).",
+		StringViewArgument( debug_name ),
+		*id
+	);
+#endif
+}
+
+static void
+opengl_create_texture_2d( GLuint *id, StringView_ASCII debug_name ) {
+	glCreateTextures( GL_TEXTURE_2D, 1, id );
+#ifdef QLIGHT_DEBUG
+	if ( debug_name.size > 0 )
+		glObjectLabel( GL_TEXTURE, *id, debug_name.size, debug_name.data );
+	log_debug_gl( "Created 2D Texture '" StringViewFormat "' (gl_id: %u).",
 		StringViewArgument( debug_name ),
 		*id
 	);
@@ -1857,35 +2097,84 @@ opengl_create_and_bind_texture_2d( GLuint *id, StringView_ASCII debug_name ) {
 }
 
 bool
-renderer_texture_upload( Texture_ID texture_id ) {
+renderer_texture_2d_upload(
+	Texture_ID texture_id,
+	Vector2_u16 origin,
+	Vector2_u16 dimensions,
+	u8 mipmap_levels,
+	GLint opengl_storage_format,
+	GLenum opengl_pixel_type
+) {
 	Texture *texture = texture_instance( texture_id );
 	if ( texture->opengl_id != 0 )
 		return false;
 
-	opengl_create_and_bind_texture_2d( &texture->opengl_id, texture->name );
+	texture->origin = origin;
+	texture->dimensions = dimensions;
+	texture->mipmap_levels = mipmap_levels;
+	texture->opengl_storage_format = opengl_storage_format;
+	texture->opengl_pixel_type = opengl_pixel_type;
 
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+	// 1. Create OpenGL identifier.
+	opengl_create_texture_2d( &texture->opengl_id, texture->name );
 
-	GLenum opengl_format = renderer_texture_format_to_opengl( texture->format );
-	// GLvoid *data = ( copy_data ) ? texture->bytes.data : NULL;
-	glTexImage2D(
-		/*         target */ GL_TEXTURE_2D,
-		/*          level */ 0,  // mipmap level: N-th mipmap image, 0 - base image
-		/* internalFormat */ texture->opengl_internal_format,
-		/*          width */ texture->width,
-		/*         height */ texture->height,
-		/*         border */ 0,  // docs.gl: This value must be 0.
-		/*         format */ opengl_format,
-		/*           type */ texture->opengl_pixel_type,
-		/*           data */ texture->bytes.data
+	// 2. Allocate Immutable Texture Storage.
+	// It cannot be modified (reused) like the legacy one, a new one must be created.
+	glTextureStorage2D(
+		/*        texture */ texture->opengl_id,
+		/*         levels */ texture->mipmap_levels,
+		/* internalformat */ texture->opengl_storage_format, // Sized format, for example: `GL_RGBA8`.
+		/*          width */ ( GLsizei )texture->dimensions.width,
+		/*         height */ ( GLsizei )texture->dimensions.height
 	);
 
+#ifdef QLIGHT_DEBUG
+	// Make sure it actually uses Immutable Texture Storage.
+	GLint opengl_texture_storage_immutable = 0;
+	glGetTextureParameteriv( texture->opengl_id, GL_TEXTURE_IMMUTABLE_FORMAT, &opengl_texture_storage_immutable );
+	Assert( opengl_texture_storage_immutable == GL_TRUE );
+#endif
+
+	// 3. Upload texture data.
+	if ( texture->bytes.data ) {
+		GLenum opengl_format = renderer_texture_channels_to_opengl( texture->channels );
+		glTextureSubImage2D(
+			/* texture */ texture->opengl_id,
+			/*   level */ 0,  // 0th mipmap - Base image, full resolution.
+			/* xoffset */ ( GLint )texture->origin.x,
+			/* yoffset */ ( GLint )texture->origin.y,
+			/*   width */ ( GLsizei )texture->dimensions.width,
+			/*  height */ ( GLsizei )texture->dimensions.height,
+			/*  format */ opengl_format, // Generic channels layout format, for example: `GL_RGB`.
+			/*    type */ texture->opengl_pixel_type,  // Pixel data type, for example: `GL_UNSIGNED_BYTE`.
+			/*   pixel */ texture->bytes.data
+		);
+
+		// 4. Generate mipmaps automatically from the base level.
+		if ( texture->mipmap_levels > 1 )
+			glGenerateTextureMipmap( texture->opengl_id );
+	}
+
+	// 5. Set texture parameters.
+	glTextureParameteri( texture->opengl_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR );
+	glTextureParameteri( texture->opengl_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+	// glTextureParameteri( texture->opengl_id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
+	// glTextureParameteri( texture->opengl_id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
+
+	StringView_ASCII storage_format_name = opengl_storage_format_name( texture->opengl_storage_format );
+	StringView_ASCII pixel_type_name = opengl_pixel_type_name( texture->opengl_pixel_type );
 	log_debug(
-		"Uploaded 2D Texture '" StringViewFormat "' (#%u, %u bytes) to GPU memory (opengl_id: %u).",
+		"Uploaded 2D Texture '" StringViewFormat "' (#%u, %u bytes) to GPU memory (%hux%hu, origin: %hux%hu, %hhu mips, " StringViewFormat ", " StringViewFormat ", gl_id: %u).",
 		StringViewArgument( texture->name ),
 		texture_id,
 		texture->bytes.size,
+		texture->dimensions.width,
+		texture->dimensions.height,
+		texture->origin.x,
+		texture->origin.y,
+		texture->mipmap_levels,
+		StringViewArgument( storage_format_name ),
+		StringViewArgument( pixel_type_name ),
 		texture->opengl_id
 	);
 	return true;
@@ -1906,11 +2195,11 @@ renderer_mesh_upload( Mesh_ID mesh_id ) {
 
 	/* 1. Create Vertex Array Object */
 
-	opengl_generate_and_bind_vertex_array( &mesh->opengl_vao, string_view( &mesh->name ) );
+	opengl_create_and_bind_vertex_array( &mesh->opengl_vao, string_view( &mesh->name ) );
 
 	/* 2. Create Vertex Buffer Object */
 
-	opengl_generate_and_bind_vertex_buffer( &mesh->opengl_vbo, string_view( &mesh->name ) );
+	opengl_create_and_bind_vertex_buffer( &mesh->opengl_vbo, string_view( &mesh->name ) );
 
 	/* 3. Upload Vertex data */
 
@@ -1941,7 +2230,7 @@ renderer_mesh_upload( Mesh_ID mesh_id ) {
 
 	/* 5. Create Element Buffer Object */
 
-	opengl_generate_and_bind_element_buffer( &mesh->opengl_ebo, string_view( &mesh->name ) );
+	opengl_create_and_bind_element_buffer( &mesh->opengl_ebo, string_view( &mesh->name ) );
 
 	// 5.3. Allocate memory and pass data
 	GLenum opengl_index_buffer_usage = ( mesh_is_dynamic( mesh ) ) ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
@@ -1975,21 +2264,21 @@ renderer_model_meshes_upload( Model_ID model_id ) {
 }
 
 GLenum
-renderer_texture_format_to_opengl( Texture_Format format ) {
-	switch ( format ) {
-		case TextureFormat_Red:           return GL_RED;
-		case TextureFormat_RG:            return GL_RG;
-		case TextureFormat_RGB:           return GL_RGB;
-		case TextureFormat_RGBA:          return GL_RGBA;
+renderer_texture_channels_to_opengl( Texture_Channels channels ) {
+	switch ( channels ) {
+		case TextureChannels_Red:           return GL_RED;
+		case TextureChannels_RG:            return GL_RG;
+		case TextureChannels_RGB:           return GL_RGB;
+		case TextureChannels_RGBA:          return GL_RGBA;
 
-		case TextureFormat_BGR:           return GL_BGR;
-		case TextureFormat_BGRA:          return GL_BGRA;
+		case TextureChannels_BGR:           return GL_BGR;
+		case TextureChannels_BGRA:          return GL_BGRA;
 
-		case TextureFormat_Depth:         return GL_DEPTH_COMPONENT;
-		case TextureFormat_Stencil:       return GL_STENCIL_INDEX;
-		case TextureFormat_DepthStencil:  return GL_DEPTH_STENCIL;
+		case TextureChannels_Depth:         return GL_DEPTH_COMPONENT;
+		case TextureChannels_Stencil:       return GL_STENCIL_INDEX;
+		case TextureChannels_DepthStencil:  return GL_DEPTH_STENCIL;
 
-		case TextureFormat_Unknown:
+		case TextureChannels_None:
 		default:                          return GL_INVALID_ENUM;
 	}
 }
@@ -2034,19 +2323,11 @@ opengl_create_and_bind_uniform_buffer( GLuint *id, GLsizeiptr size, GLbitfield s
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_BUFFER, *id, debug_name.size, debug_name.data );
-	log_debug_gl( "Created and bound Uniform Buffer '" StringViewFormat "' (#%u).",
+#endif
+	log_debug_gl( "Created and bound Uniform Buffer '" StringViewFormat "' (gl_id: %u).",
 		StringViewArgument( debug_name ),
 		*id
 	);
-#endif
-	// Legacy
-	// glNamedBufferData(
-	// 	/* buffer */ *id,
-	// 	/*   size */ size,
-	// 	/*   data */ NULL,
-	// 	/*  usage */ usage
-	// );
-
 	glNamedBufferStorage(
 		/* buffer */ *id,
 		/*   size */ size,
@@ -2054,29 +2335,6 @@ opengl_create_and_bind_uniform_buffer( GLuint *id, GLsizeiptr size, GLbitfield s
 		/*  flags */ storage_bits
 	);
 }
-
-/*
-Renderer_Uniform_Buffer *
-renderer_uniform_buffer_create( StringView_ASCII name, u32 size, Renderer_GL_Buffer_Usage usage, u32 binding ) {
-	Renderer_Uniform_Buffer _uniform_buffer = {
-		.name = name,
-		.size = size,
-		.binding = binding,
-		.usage = usage
-		// .opengl_ubo
-	};
-
-	opengl_create_and_bind_uniform_buffer( &_uniform_buffer.opengl_ubo, size, binding, usage, name );
-
-	u32 buffer_idx = array_add( &g_renderer.uniform_buffers, _uniform_buffer );
-	Renderer_Uniform_Buffer *uniform_buffer = &g_renderer.uniform_buffers.data[ buffer_idx ];
-
-	if ( binding != INVALID_UNIFORM_BUFFER_BINDING )
-		renderer_uniform_buffer_set_binding( uniform_buffer, binding );
-
-	return uniform_buffer;
-}
-*/
 
 Renderer_Uniform_Buffer *
 renderer_uniform_buffer_create( StringView_ASCII name, u32 size, Renderer_GL_Buffer_Storage_Bits storage_bits, u32 binding ) {

@@ -274,9 +274,18 @@ void load_shaders() {
 }
 
 void load_texture( StringView_ASCII name, StringView_ASCII file_path, bool upload_to_renderer ) {
-	Texture_ID texture_id = texture_load_from_file( name, file_path );
-	if ( upload_to_renderer )
-		renderer_texture_upload( texture_id );
+	Texture_ID texture_id = texture_load_from_file( name, file_path, TextureChannels_RGB );
+	Texture *texture = texture_instance( texture_id );
+	if ( upload_to_renderer ) {
+		renderer_texture_2d_upload(
+			/*            texture_id */ texture_id,
+			/*                origin */ { 0, 0 },
+			/*            dimensions */ texture->dimensions,
+			/*         mipmap_levels */ 6,
+			/* opengl_storage_format */ GL_RGB8,
+			/*     opengl_pixel_type */ GL_UNSIGNED_BYTE
+		);
+	}
 }
 
 void load_textures() {

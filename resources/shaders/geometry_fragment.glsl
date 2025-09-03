@@ -33,7 +33,7 @@ layout ( location = 2 ) out vec4 gbuffer_color_specular;  // G-Buffer Color/Spec
 
 // Material textures:
 uniform sampler2D texture_diffuse0;
-// uniform sampler2D texture_normal0;
+uniform sampler2D texture_normal0;
 uniform sampler2D texture_specular0;
 
 void main()

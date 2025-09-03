@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "allocator.h"
+#include "math.h"
 
 // `( count & 0 )` is a trick to make compiler do type deduction from `count` variable.
 // If you would assign to 0, the compiler would infer from the literal - 0 is `int`.
