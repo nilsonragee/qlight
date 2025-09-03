@@ -33,6 +33,21 @@ Array<T> array_new(Allocator *allocator, u32 initial_capacity) {
 	return array;
 }
 
+template <typename T>
+Array<T> array_new(Allocator *allocator, ArrayView<T> source) {
+	Array<T> array;
+	array.allocator = allocator;
+	array.size = source.size;
+	array.capacity = source.size;
+	if ( source.size > 0 ) {
+		array.data = TemplateAllocate(allocator, array.capacity, T);
+		array_add_many(&array, source);
+	} else {
+		array.data = NULL;
+	}
+	return array;
+}
+
 template < typename T >
 static ArrayView< T > array_view_impl( T* data, u32 data_size, u32 size = 0, u32 offset = 0 ) {
 	ArrayView< T > view;
