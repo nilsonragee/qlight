@@ -54,6 +54,11 @@ typedef  Vector2_f32  Vector2; // `Vector2` = `Vector2_f32` by default.
 typedef  Vector3_f32  Vector3; // `Vector3` = `Vector3_f32` by default.
 typedef  Vector4_f32  Vector4; // `Vector4` = `Vector4_f32` by default.
 
+struct Vector2_f32_XY {
+	float x;
+	float y;
+};
+
 struct Vector3_f32_XYZ {
 	float x;
 	float y;
