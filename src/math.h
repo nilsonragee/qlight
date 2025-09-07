@@ -97,7 +97,9 @@ f32 inverse_sqrt_general( f32 x );
 inline f32 inverse_sqrt( f32 x )  { return inverse_sqrt_fast( x ); }
 
 Vector3_f32 normalize( Vector3_f32 v );
+Vector2_f32 cross( Vector2_f32 lhs, Vector2_f32 rhs );
 Vector3_f32 cross( Vector3_f32 lhs, Vector3_f32 rhs );
+f32 dot( Vector2_f32 lhs, Vector2_f32 rhs );
 f32 dot( Vector3_f32 lhs, Vector3_f32 rhs );
 f32 dot( Vector4_f32 lhs, Vector4_f32 rhs );
 

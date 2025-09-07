@@ -34,6 +34,15 @@ f32 inverse_sqrt_general( f32 x ) {
 	return 1.0f / sqrtf( x );
 }
 
+Vector2_f32 cross( Vector2_f32 lhs, Vector2_f32 rhs ) {
+	Vector2_f32 result = {
+		lhs.y * rhs.x  -  rhs.y * lhs.x,
+		lhs.x * rhs.y  -  rhs.x * lhs.y
+	};
+
+	return result;
+}
+
 Vector3_f32 cross( Vector3_f32 lhs, Vector3_f32 rhs ) {
 	Vector3_f32 result = {
 		lhs.y * rhs.z  -  rhs.y * lhs.z,
@@ -41,6 +50,12 @@ Vector3_f32 cross( Vector3_f32 lhs, Vector3_f32 rhs ) {
 		lhs.x * rhs.y  -  rhs.x * lhs.y
 	};
 
+	return result;
+}
+
+f32 dot( Vector2_f32 lhs, Vector2_f32 rhs ) {
+	Vector2_f32 vector = lhs * rhs;
+	f32 result = vector.x + vector.y;
 	return result;
 }
 
@@ -52,7 +67,7 @@ f32 dot( Vector3_f32 lhs, Vector3_f32 rhs ) {
 
 f32 dot( Vector4_f32 lhs, Vector4_f32 rhs ) {
 	Vector4_f32 vector = lhs * rhs;
-	f32 result = ( vector.x + vector.y )  +  ( vector.z + vector.w );
+	f32 result = vector.x + vector.y + vector.z + vector.w;
 	return result;
 }
 
