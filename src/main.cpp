@@ -432,14 +432,7 @@ static bool
 imgui_entity_static_object_fields( Entity_Static_Object *object ) {
 	ImGui::TextDisabled( "--- Entity_Static_Object ---" );
 	bool modified = false;
-	Model_ID model_id = object->model;
-	Model *model = model_instance( model_id );
-	if ( ImGui::TreeNode( "Model", "Model: %hu", model_id ) ) {
-		if ( model )
-			modified |= imgui_model_fields( model );
-
-		ImGui::TreePop();
-	}
+	modified |= ImGui::InputScalar( "Model ID", ImGuiDataType_U16, &object->model );
 	return modified;
 }
 
@@ -447,14 +440,7 @@ static bool
 imgui_entity_dynamic_object_fields( Entity_Dynamic_Object *object ) {
 	ImGui::TextDisabled( "--- Entity_Dynamic_Object ---" );
 	bool modified = false;
-	Model_ID model_id = object->model;
-	Model *model = model_instance( model_id );
-	if ( ImGui::TreeNode( "Model", "Model: %hu", model_id ) ) {
-		if ( model )
-			modified |= imgui_model_fields( model );
-
-		ImGui::TreePop();
-	}
+	modified |= ImGui::InputScalar( "Model ID", ImGuiDataType_U16, &object->model );
 	return modified;
 }
 
