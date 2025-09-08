@@ -77,11 +77,12 @@ u32 carray_add(CArray *array, void *item) {
 		carray_resize(array, array->capacity * 2);
 	}
 
-	const u32 current_index = array->size * array->item_size;
-	memcpy( &array->data[ current_index ], item, array->item_size );
+	const u32 current_item_index = array->size;
+	const u32 byte_offset = current_item_index * array->item_size;
+	memcpy( &array->data[ byte_offset ], item, array->item_size );
 	array->size++;
 
-	return current_index;
+	return current_item_index;
 }
 
 // Returns number of added items.
@@ -93,9 +94,10 @@ u32 carray_add_many(CArray *array, CArrayView source) {
 		carray_resize(array, array->capacity * 2);
 	}
 
-	const u32 current_index = array->size * array->item_size;
+	const u32 current_item_index = array->size;
+	const u32 byte_offset = current_item_index * array->item_size;
 	const u32 copy_size = source.size * source.item_size;
-	memcpy( &array->data[ current_index ], source.data, copy_size );
+	memcpy( &array->data[ byte_offset ], source.data, copy_size );
 	array->size += source.size;
 
 	// Assume we always add all items since this is a dynamic array case.
