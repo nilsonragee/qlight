@@ -210,8 +210,7 @@ load_phong_lighting_shader() {
 		.index = 0,
 		.elements = 2,
 		.data_type = RendererDataType_f32,
-		.normalize = false,
-		.active = true
+		.bits = RendererVertexAttributeBit_Active
 	} );
 
 	/* Uniforms */
@@ -273,31 +272,30 @@ void load_shaders() {
 	load_phong_lighting_shader();
 }
 
-void load_texture( StringView_ASCII name, StringView_ASCII file_path, bool upload_to_renderer ) {
-	Texture_ID texture_id = texture_load_from_file( name, file_path, TextureChannels_RGB );
+void load_texture( StringView_ASCII name, StringView_ASCII file_path, Texture_Channels channels, GLint opengl_storage_format ) {
+	Texture_ID texture_id = texture_load_from_file( name, file_path, channels );
 	Texture *texture = texture_instance( texture_id );
-	if ( upload_to_renderer ) {
-		renderer_texture_2d_upload(
-			/*            texture_id */ texture_id,
-			/*                origin */ { 0, 0 },
-			/*            dimensions */ texture->dimensions,
-			/*         mipmap_levels */ 6,
-			/* opengl_storage_format */ GL_RGB8,
-			/*     opengl_pixel_type */ GL_UNSIGNED_BYTE
-		);
-	}
+	renderer_texture_2d_upload(
+		/*            texture_id */ texture_id,
+		/*                origin */ { 0, 0 },
+		/*            dimensions */ texture->dimensions,
+		/*         mipmap_levels */ 5,
+		/* opengl_storage_format */ opengl_storage_format,
+		/*     opengl_pixel_type */ GL_UNSIGNED_BYTE
+	);
 }
 
 void load_textures() {
+//#ifdef LOAD_TEXTURES
+	load_texture( "bark_diffuse", "resources/textures/bark_diffuse_x3072_expt1-255.png", TextureChannels_RGB, GL_SRGB8 );
+	load_texture( "bark_normal", "resources/textures/bark_normal_x3072_expt1-255_gauss-bilat.png", TextureChannels_RGB, GL_RGB8 );
 #ifdef LOAD_TEXTURES
-	load_texture( "bark_diffuse", "resources/textures/bark_diffuse_x3072_expt1-255.png", true );
-	load_texture( "bark_normal", "resources/textures/bark_normal_x3072_expt1-255_gauss-bilat.png", true );
 
-	load_texture( "dried-soil_diffuse", "resources/textures/dried_soil_diffuse_x3072_expt1-190.png", true );
-	load_texture( "dried-soil_normal", "resources/textures/dried_soil_normal_x3072_expt1-190.png", true );
+	load_texture( "dried-soil_diffuse", "resources/textures/dried_soil_diffuse_x3072_expt1-190.png", TextureChannels_RGB, GL_RGB8 );
+	load_texture( "dried-soil_normal", "resources/textures/dried_soil_normal_x3072_expt1-190.png", TextureChannels_RGB, GL_RGB8 );
 
-	load_texture( "rocks-medium_diffuse", "resources/textures/rocks-medium_diffuse_x3072_expt1-394_flat.png", true );
-	load_texture( "rocks-medium_normal", "resources/textures/rocks-medium_normal_x3072_expt1-394_flat.png", true );
+	load_texture( "rocks-medium_diffuse", "resources/textures/rocks-medium_diffuse_x3072_expt1-394_flat.png", TextureChannels_RGB, GL_RGB8 );
+	load_texture( "rocks-medium_normal", "resources/textures/rocks-medium_normal_x3072_expt1-394_flat.png", TextureChannels_RGB, GL_RGB8 );
 #endif
 }
 
@@ -309,19 +307,21 @@ void create_materials() {
 	Texture_ID specular = INVALID_TEXTURE_ID;
 	float shininess_exponent = 0.0f;
 
-//#define LOAD_TEXTURES
-#ifdef LOAD_TEXTURES
+//#ifdef LOAD_TEXTURES
 	diffuse = texture_find( "bark_diffuse" );
 	normal = texture_find( "bark_normal" );
+	specular = INVALID_TEXTURE_ID;
 	Assert( diffuse != INVALID_TEXTURE_ID );
 	Assert( normal != INVALID_TEXTURE_ID );
-#endif
+//#endif
 	shininess_exponent = 64.0f;
 	material_create( "bark", shader, diffuse, normal, specular, shininess_exponent );
 
+//#endif
 #ifdef LOAD_TEXTURES
 	diffuse = texture_find( "dried-soil_diffuse" );
 	normal = texture_find( "dried-soil_normal" );
+	specular = INVALID_TEXTURE_ID;
 	Assert( diffuse != INVALID_TEXTURE_ID );
 	Assert( normal != INVALID_TEXTURE_ID );
 #endif
@@ -331,6 +331,7 @@ void create_materials() {
 #ifdef LOAD_TEXTURES
 	diffuse = texture_find( "rocks-medium_diffuse" );
 	normal = texture_find( "rocks-medium_normal" );
+	specular = INVALID_TEXTURE_ID;
 	Assert( diffuse != INVALID_TEXTURE_ID );
 	Assert( normal != INVALID_TEXTURE_ID );
 #endif

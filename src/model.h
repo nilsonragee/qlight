@@ -110,7 +110,7 @@ Mesh_ID mesh_store( Mesh *mesh );
 Mesh_ID mesh_find( StringView_ASCII name );
 Mesh * mesh_instance( Mesh_ID mesh_id );
 
-u32 mesh_vertex_attributes_size( Mesh *mesh );
+u32 mesh_vertex_attributes_size( Mesh *mesh, u8 binding );
 
 bool mesh_is_dynamic( Mesh *mesh );
 bool mesh_is_dirty( Mesh *mesh );

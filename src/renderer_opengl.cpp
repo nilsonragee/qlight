@@ -193,9 +193,8 @@ opengl_generate_and_bind_vertex_array( GLuint *id, StringView_ASCII debug_name )
 }
 
 static void
-opengl_create_and_bind_vertex_array( GLuint *id, StringView_ASCII debug_name ) {
+opengl_create_vertex_array( GLuint *id, StringView_ASCII debug_name ) {
 	glCreateVertexArrays( 1, id );
-	glBindVertexArray( *id );
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_VERTEX_ARRAY, *id, debug_name.size, debug_name.data );
@@ -221,9 +220,8 @@ opengl_generate_and_bind_vertex_buffer( GLuint *id, StringView_ASCII debug_name 
 }
 
 static void
-opengl_create_and_bind_vertex_buffer( GLuint *id, StringView_ASCII debug_name ) {
+opengl_create_vertex_buffer( GLuint *id, StringView_ASCII debug_name ) {
 	glCreateBuffers( 1, id );
-	glBindBuffer( GL_ARRAY_BUFFER, *id );
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_BUFFER, *id, debug_name.size, debug_name.data );
@@ -249,9 +247,8 @@ opengl_generate_and_bind_element_buffer( GLuint *id, StringView_ASCII debug_name
 }
 
 static void
-opengl_create_and_bind_element_buffer( GLuint *id, StringView_ASCII debug_name ) {
+opengl_create_element_buffer( GLuint *id, StringView_ASCII debug_name ) {
 	glCreateBuffers( 1, id );
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, *id );
 #ifdef QLIGHT_DEBUG
 	if ( debug_name.size > 0 )
 		glObjectLabel( GL_BUFFER, *id, debug_name.size, debug_name.data );
@@ -490,21 +487,25 @@ setup_fullscreen_quad() {
 	array_add( &attributes, Renderer_Vertex_Attribute {
 		.name = "texture_uv",
 		.index = 0,
+		.binding = 0,
 		.elements = 2,
 		.data_type = RendererDataType_f32,
-		.normalize = false,
-		.active = true
+		.bits = RendererVertexAttributeBit_Active
 	} );
 
 	Mesh quad_mesh = {
 		.name = string_new( sys_allocator, "Fullscreen Quad" ),
-		// .vertices = array_new< Vertex_Quad >( sys_allocator, 4 ),
+		// .vertices = carray_new( sys_allocator, 4 ),
 		// .indices = array_new< u32 >( sys_allocator, 3 * 2 ),  // 3 vertices per 2 triangles
 		.material_id = INVALID_MATERIAL_ID,
+		.bits1 = 0,
 		.vertex_attributes = attributes
+		// .opengl_vao
+		// .opengl_vbo
+		// .opengl_ebo
 	};
 
-	u32 vertex_size = mesh_vertex_attributes_size( &quad_mesh );
+	u32 vertex_size = mesh_vertex_attributes_size( &quad_mesh, /* binding */ 0 );
 	quad_mesh.vertices = carray_new( sys_allocator, vertex_size, 4 );
 	u32 index_type_size = sizeof( u16 );
 	quad_mesh.indices = carray_new( sys_allocator, index_type_size, 3 * 2 );  // 3 vertices per 2 triangles
@@ -587,28 +588,37 @@ load_geometry_buffer_shader( StringView_ASCII vertex_stage_filepath, StringView_
 	array_add( attributes, Renderer_Vertex_Attribute {
 		.name = "position",
 		.index = 0,
+		.binding = 0,
 		.elements = 3,
 		.data_type = RendererDataType_f32,
-		.normalize = false,
-		.active = true
+		.bits = RendererVertexAttributeBit_Active
 	} );
 
 	array_add( attributes, Renderer_Vertex_Attribute {
 		.name = "normal",
 		.index = 1,
+		.binding = 0,
 		.elements = 3,
 		.data_type = RendererDataType_f32,
-		.normalize = false,
-		.active = true
+		.bits = RendererVertexAttributeBit_Active
 	} );
 
 	array_add( attributes, Renderer_Vertex_Attribute {
 		.name = "texture_uv",
 		.index = 2,
+		.binding = 0,
 		.elements = 2,
 		.data_type = RendererDataType_f32,
-		.normalize = false,
-		.active = true
+		.bits = RendererVertexAttributeBit_Active
+	} );
+
+	array_add( attributes, Renderer_Vertex_Attribute {
+		.name = "tangent",
+		.index = 3,
+		.binding = 0,
+		.elements = 3,
+		.data_type = RendererDataType_f32,
+		.bits = RendererVertexAttributeBit_Active
 	} );
 
 	/* Uniforms */
@@ -2195,18 +2205,18 @@ renderer_mesh_upload( Mesh_ID mesh_id ) {
 
 	/* 1. Create Vertex Array Object */
 
-	opengl_create_and_bind_vertex_array( &mesh->opengl_vao, string_view( &mesh->name ) );
+	opengl_create_vertex_array( &mesh->opengl_vao, string_view( &mesh->name ) );
 
 	/* 2. Create Vertex Buffer Object */
 
-	opengl_create_and_bind_vertex_buffer( &mesh->opengl_vbo, string_view( &mesh->name ) );
+	opengl_create_vertex_buffer( &mesh->opengl_vbo, string_view( &mesh->name ) );
 
 	/* 3. Upload Vertex data */
 
 	GLenum opengl_vertex_buffer_usage = ( mesh_is_dynamic( mesh ) ) ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
-	u32 vertices_size = mesh->vertices.size * sizeof( Vertex_3D );
+	u32 vertices_size = mesh->vertices.size * mesh->vertices.item_size;
 	u8 *vertices_data = mesh->vertices.data;
-	glBufferData( GL_ARRAY_BUFFER, vertices_size, vertices_data, opengl_vertex_buffer_usage );
+	glNamedBufferData( mesh->opengl_vbo, vertices_size, vertices_data, opengl_vertex_buffer_usage );
 
 	/* 4. Define vertex attributes */
 
@@ -2215,28 +2225,75 @@ renderer_mesh_upload( Mesh_ID mesh_id ) {
 		If attribute indices do not correspond to indices within array, offsets will be completely wrong.
 		TODO: Do something about it.
 	*/
-	u64 offset = 0;
-	u64 attributes_size = mesh_vertex_attributes_size( mesh );
-	ForIt( mesh->vertex_attributes.data, mesh->vertex_attributes.size ) {
-		if ( !it.active )
-			continue;
+	constexpr u32 MAX_BINDINGS = 2;  // @TODO: Handle in run-time.
+	u32 binding_offsets[ MAX_BINDINGS ];
+	u32 binding_strides[ MAX_BINDINGS ];
+	For( MAX_BINDINGS ) {
+		binding_offsets[ it_index ] = 0;
+		binding_strides[ it_index ] = mesh_vertex_attributes_size( mesh, /* binding */ it_index );
+	}
 
+	// Bind VBO (Vertex Buffer) to a VAO (Vertex Array) binding slot.
+	glVertexArrayVertexBuffer(
+		/*        vaobj */ mesh->opengl_vao,
+		/* bindingindex */ 0,
+		/*       buffer */ mesh->opengl_vbo,
+		/*       offset */ 0,
+		/*       stride */ binding_strides[ 0 ]
+	);
+
+	ForIt( mesh->vertex_attributes.data, mesh->vertex_attributes.size ) {
 		GLenum opengl_data_type = renderer_data_type_to_opengl_type( it.data_type );
 		u32 data_type_size = ( u32 )renderer_data_type_size( it.data_type ) * it.elements;
-		glVertexAttribPointer( it.index, it.elements, opengl_data_type, it.normalize, ( GLsizei )attributes_size, ( void * )offset );
-		glEnableVertexAttribArray( it.index );
-		offset += data_type_size;
+		bool active = it.bits & RendererVertexAttributeBit_Active;
+		bool normalize = it.bits & RendererVertexAttributeBit_Normalize;
+
+		u32 *offset = &binding_offsets[ it.binding ];
+		// Set attribute format parameters.
+		glVertexArrayAttribFormat(
+			/*          vaobj */ mesh->opengl_vao,
+			/*    attribindex */ it.index,
+			/*           size */ it.elements,
+			/*           type */ opengl_data_type,
+			/*     normalized */ normalize,
+			/* relativeoffset */ *offset
+		);
+
+		// Specify from which VBO (Vertex Buffer) to read the attribute from.
+		// Binding is a VAO (Vertex Array) slot a VBO (Vertex Buffer) is bound to.
+		glVertexArrayAttribBinding(
+			/*        vaobj */ mesh->opengl_vao,
+			/*  attribindex */ it.index,
+			/* bindingindex */ it.binding
+		);
+		*offset += data_type_size;
+
+		if ( active ) {
+			glEnableVertexArrayAttrib(
+				/* vaobj */ mesh->opengl_vao,
+				/* index */ it.index
+			);
+		} else {
+			glDisableVertexArrayAttrib(
+				/* vaobj */ mesh->opengl_vao,
+				/* index */ it.index
+			);
+		}
 	}}
 
 	/* 5. Create Element Buffer Object */
 
-	opengl_create_and_bind_element_buffer( &mesh->opengl_ebo, string_view( &mesh->name ) );
+	opengl_create_element_buffer( &mesh->opengl_ebo, string_view( &mesh->name ) );
 
-	// 5.3. Allocate memory and pass data
 	GLenum opengl_index_buffer_usage = ( mesh_is_dynamic( mesh ) ) ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
 	u32 indices_size = mesh->indices.size * mesh->indices.item_size;
 	u8 *indices_data = mesh->indices.data;
-	glBufferData( GL_ELEMENT_ARRAY_BUFFER, indices_size, indices_data, opengl_index_buffer_usage );
+	glNamedBufferData( mesh->opengl_ebo, indices_size, indices_data, opengl_index_buffer_usage );
+
+	glVertexArrayElementBuffer(
+		/*  vaobj */ mesh->opengl_vao,
+		/* buffer */ mesh->opengl_ebo
+	);
 
 	log_debug( "Uploaded Mesh '" StringViewFormat "' (#%u, %u vertices, %u indices) to GPU memory (VAO: %u, VBO: %u, EBO: %u).",
 		StringViewArgument( mesh->name ),

@@ -302,13 +302,21 @@ struct Renderer_Shader_Stage {
 	GLuint opengl_shader;
 };
 
+enum Renderer_Vertex_Attribute_Bit : u16 {
+	RendererVertexAttributeBit_None = 0,
+
+	RendererVertexAttributeBit_Active = ( 1 << 0 ),
+	RendererVertexAttributeBit_Normalize = ( 1 << 1 )
+};
+typedef u16 Renderer_Vertex_Attribute_Bits;
+
 struct Renderer_Vertex_Attribute {
 	StringView_ASCII name;
-	u32 index;
-	u32 elements; // 1, 2, 3, or 4
+	u8 index;
+	u8 binding;
+	u8 elements; // 1, 2, 3, or 4
 	Renderer_Data_Type data_type;
-	bool normalize;
-	bool active;
+	Renderer_Vertex_Attribute_Bits bits;
 };
 
 struct Renderer_Uniform {
@@ -436,6 +444,15 @@ struct Vertex_3D {
 	Vector3_f32 position;
 	Vector3_f32 normal;
 	Vector2_f32 texture_uv;
+	Vector3_f32 tangent;
+	// Vector3_f32 texture_uvw;
+};
+
+struct Vertex_3D_XYZ {
+	Vector3_f32_XYZ position;
+	Vector3_f32_XYZ normal;
+	Vector2_f32_XY texture_uv;
+	Vector3_f32_XYZ tangent;
 	// Vector3_f32 texture_uvw;
 };
 

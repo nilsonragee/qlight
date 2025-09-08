@@ -23,9 +23,11 @@
 
 // Inputs from the vertex shader.
 // Variable names must match the ones declared in vertex shader outputs.
-in vec3 fragment_position;    // Fragment interpolated World-space position
-in vec3 fragment_normal;      // Fragment interpolated World-space normal
-in vec2 fragment_texture_uv;  // Fragment interpolated texture UV (no transformations needed)
+layout ( location = 0 ) in Vertex_Out {
+	vec3 position;    // Fragment interpolated World-space position
+	vec2 texture_uv;  // Fragment interpolated texture UV
+	mat3 TBN;         // Fragment interpolated Tangent-Bitangent-Normal matrix (Tangent-space -> World-space transformation)
+} fragment_in;
 
 layout ( location = 0 ) out vec3 gbuffer_position;        // G-Buffer Position texture attachment
 layout ( location = 1 ) out vec3 gbuffer_normal;          // G-Buffer Normal texture attachment
@@ -39,18 +41,21 @@ uniform sampler2D texture_specular0;
 void main()
 {
 	// Store Fragment XYZ World-space position as RGB color in G-Buffer Position texture.
-	gbuffer_position = fragment_position;
+	gbuffer_position = fragment_in.position;
 	// gbuffer_position = vec3( 0.0, 1.0, 0.0 );
 
-	// Store Fragment XYZ World-space normal vector as RGB color in G-Buffer Normal texture.
-    gbuffer_normal = normalize( fragment_normal );
+	// Store Fragment XYZ World-space (normal mapped) normal vector as RGB color in G-Buffer Normal texture.
+	vec3 tangent_normal = texture( texture_normal0, fragment_in.texture_uv ).rgb;
+	tangent_normal = tangent_normal * 2.0 - 1.0;  // [0; 1] -> [-1; 1]
+	vec3 world_normal = normalize( fragment_in.TBN * tangent_normal );  // Tangent-space -> World-space
+    gbuffer_normal = world_normal;
     // gbuffer_normal = vec3( 0.0, 0.0, 1.0 );
 
     // Store Fragment RGB diffuse texture color as RGB color in G-Buffer Color/Specular texture.
-    gbuffer_color_specular.rgb = texture( texture_diffuse0, fragment_texture_uv ).rgb;
+    gbuffer_color_specular.rgb = texture( texture_diffuse0, fragment_in.texture_uv ).rgb;
     //gbuffer_color_specular.rgb = vec3( 1.0, 0.0, 0.0 );
 
     // Store Fragment Specular intensity as Alpha channel value in G-Buffer Color/Specular texture.
-    gbuffer_color_specular.a = texture( texture_specular0, fragment_texture_uv ).r;
+    gbuffer_color_specular.a = texture( texture_specular0, fragment_in.texture_uv ).r;
     //gbuffer_color_specular.a = 0.5;
 }

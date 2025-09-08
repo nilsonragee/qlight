@@ -17,17 +17,20 @@
 	};
 */
 
-layout (location = 0) in vec3 in_position;    // Vertex Local-space position
-layout (location = 1) in vec3 in_normal;      // Vertex Local-space normal
-layout (location = 2) in vec2 in_texture_uv;  // Vertex texture UV
+layout ( location = 0 ) in vec3 in_position;    // Vertex Local-space position
+layout ( location = 1 ) in vec3 in_normal;      // Vertex Local-space normal
+layout ( location = 2 ) in vec2 in_texture_uv;  // Vertex texture UV
+layout ( location = 3 ) in vec3 in_tangent;     // Vertex Local-space tangent
 
 // These are passed to fragment shader inputs.
 // Variable names must be the same in both shaders.
 // NOTE: Values get interpolated using barycentric coordinates for triangles (triangle-space coordinates)
 // on Rasterization stage (after Vertex shader, before Fragment shader; fixed function, non-programmable).
-out vec3 fragment_position;    // Fragment interpolated World-space position
-out vec3 fragment_normal;      // Fragment interpolated World-space normal
-out vec2 fragment_texture_uv;  // Fragment interpolated texture UV (no transformations needed)
+layout ( location = 0 ) out Vertex_Out {
+	vec3 position;    // Fragment interpolated World-space position
+	vec2 texture_uv;  // Fragment interpolated texture UV (no transformations needed)
+	mat3 TBN;         // Fragment interpolated Tangent-Bitangent-Normal matrix (Tangent-space -> World-space transformation)
+} vertex_out;
 
 // Per-mesh
 uniform mat4 model;          // Local (Object) -> World space
@@ -39,19 +42,27 @@ uniform mat4 projection;     // View -> Clip space [-1.0; 1.0] (-> Screen space 
 
 void main()
 {
-	// Transform: Local space -> World space position.
-	vec4 position_xyzw = vec4( in_position, 1.0 );
-	position_xyzw = model * position_xyzw;
-	// fragment_position = model * vec4( in_position.xyz, 1.0 );
-	fragment_position = position_xyzw.xyz;
+	/* Position */
 
-	// Transform: Local space -> World space normal vector (corrected for non-uniform scaling)
-	fragment_normal = normal_matrix * in_normal;
+	// Transform: Local space -> World space position.
+	vec4 position_xyzw = model * vec4( in_position, 1.0 );
+	vertex_out.position = position_xyzw.xyz;
+
+	/* Texture UV */
 
 	// Pass as is: no transformations needed.
-	fragment_texture_uv = in_texture_uv;
+	vertex_out.texture_uv = in_texture_uv;
+
+	/* Tangent-Bitangent-Normal matrix */
+
+	vec3 T = normalize( vec3( normal_matrix * in_tangent ) ); // Tangent
+	vec3 N = normalize( vec3( normal_matrix * in_normal ) ); // Normal
+	// Re-orthogonalize T with respect to N
+	T = normalize( T - dot( T, N ) * N );
+	vec3 B = cross( N, T ); // Bitangent
+	vertex_out.TBN = mat3( T, B, N );
 
 	// ... * view * position_xyzw// `* model` is already applied.
-	gl_Position = projection * view * model * vec4( in_position, 1.0 );
+	gl_Position = projection * view * position_xyzw;
 	// gl_Position = vec4(0.0, 0.0, 0.5, 1.0);
 }
