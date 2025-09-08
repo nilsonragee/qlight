@@ -1913,7 +1913,7 @@ renderer_draw_frame() {
 		glBlitNamedFramebuffer(
 			/*           source */ geometry_framebuffer->opengl_framebuffer,
 			/*      destination */ 0,
-			/*      source rect */ 0, 0, 1280, 720,
+			/*      source rect */ 0, 0, g_renderer.gbuffer.dimensions.width, g_renderer.gbuffer.dimensions.height,
 			/* destination rect */ 0, 0, screen.width, screen.height,
 			/*             mask */ GL_COLOR_BUFFER_BIT,
 			/*           filter */ GL_LINEAR
