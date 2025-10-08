@@ -24,6 +24,7 @@ constexpr Material_ID INVALID_MATERIAL_ID = U16_MAX;
 
 bool materials_init();
 void materials_shutdown();
+ArrayView< Material > materials_get_storage_view();
 
 Material_ID material_create(
 	StringView_ASCII name,

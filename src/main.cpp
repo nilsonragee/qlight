@@ -26,6 +26,7 @@ Screen screen;
 bool imgui_draw_edit_window = true;
 bool imgui_draw_demo_window = false;
 bool imgui_draw_entities_window = true;
+bool imgui_draw_materials_window = true;
 bool freeze_light_change = false;
 bool freeze_camera = false;
 
@@ -306,6 +307,8 @@ void create_materials() {
 	Texture_ID normal = INVALID_TEXTURE_ID;
 	Texture_ID specular = INVALID_TEXTURE_ID;
 	float shininess_exponent = 0.0f;
+
+	material_create( "dummy", NULL, INVALID_TEXTURE_ID, INVALID_TEXTURE_ID, INVALID_TEXTURE_ID, 0.0f );
 
 //#ifdef LOAD_TEXTURES
 	diffuse = texture_find( "bark_diffuse" );
@@ -761,6 +764,8 @@ int main()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
+		static int g_frame_idx = 1;
+
 		if (imgui_draw_demo_window) {
 			ImGui::ShowDemoWindow(&imgui_draw_demo_window);
 		}
@@ -841,7 +846,6 @@ int main()
 				ImGui::Text("Renderer: Frametime: %.3f ms/frame (%.1f FPS)", frame_time, 1000.0f / frame_time);
 			}
 
-			static int g_frame_idx = 1;
 			if ( g_frame_idx == 2 ) {
 				// The window's size is calculated right before the drawing, I think?
 				// So a simple temporary solution is to let it calculate and draw the 1-st frame,
@@ -852,7 +856,7 @@ int main()
 				window_pos.x += window_size.x;
 				ImGui::SetNextWindowPos( window_pos, ImGuiCond_FirstUseEver );
 			}
-			g_frame_idx += 1;
+
 			ImGui::End();
 		}
 
@@ -884,6 +888,37 @@ int main()
 				}}
 			}
 
+			if ( g_frame_idx == 2 ) {
+				ImVec2 window_pos = ImGui::GetWindowPos();
+				ImVec2 window_size = ImGui::GetWindowSize();
+				window_pos.x += window_size.x;
+				ImGui::SetNextWindowPos( window_pos, ImGuiCond_FirstUseEver );
+			}
+
+			ImGui::End();
+		}
+
+		if ( imgui_draw_materials_window ) {
+			if ( ImGui::Begin( "Materials", NULL, ImGuiWindowFlags_AlwaysAutoResize ) ) {
+				ArrayView< Material > materials = materials_get_storage_view();
+				ForIt( materials.data, materials.size ) {
+					if ( it.name.data == NULL )
+						continue;
+
+					Material_ID material_id = it_index;
+					if ( ImGui::TreeNode( (void*)(intptr_t)it_index, "%hu: " StringViewFormat, material_id, StringViewArgument( it.name ) ) ) {
+						StringView_ASCII shader_name = ( it.shader_program ) ? it.shader_program->name : string_view_empty();
+						ImGui::Text( "Shader Program: 0x%X -> \"" StringViewFormat "\"", it.shader_program, StringViewArgument( shader_name ) );
+						ImGui::InputScalar( "Diffuse Texture ID", ImGuiDataType_U16, &it.diffuse );
+						ImGui::InputScalar( "Normal Texture ID", ImGuiDataType_U16, &it.normal_map );
+						ImGui::InputScalar( "Specular Texture ID", ImGuiDataType_U16, &it.specular_map );
+						ImGui::DragFloat( "Shininess Exponent", &it.shininess_exponent, 2.0f, 0.0f, 4096.0f, "%.1f" );
+
+						ImGui::TreePop();
+					}
+				}}
+			}
+
 			ImGui::End();
 		}
 
@@ -893,6 +928,8 @@ int main()
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 		glFlush();
+
+		g_frame_idx += 1;
 	}
 
 	ImGui_ImplOpenGL3_Shutdown();

@@ -35,6 +35,10 @@ void materials_shutdown() {
 	array_free( &g_materials.materials );
 }
 
+ArrayView< Material > materials_get_storage_view() {
+	return array_view( &g_materials.materials );
+}
+
 Material_ID material_create(
 	StringView_ASCII name,
 	Renderer_Shader_Program *shader_program,
