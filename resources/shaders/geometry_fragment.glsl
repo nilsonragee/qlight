@@ -57,5 +57,10 @@ void main()
 
     // Store Fragment Specular intensity as Alpha channel value in G-Buffer Color/Specular texture.
     gbuffer_color_specular.a = texture( texture_specular0, fragment_in.texture_uv ).r;
+    // If a Roughness map is used as a Specular map, then its value should be inverted - they are opposite of each other.
+    // Roughness 1.0 == 0.0 Specular
+    // Roughness 0.5 == 0.5 Specular
+    // Roughness 0.0 == 1.0 Specular
+    gbuffer_color_specular.a = 1.0 - gbuffer_color_specular.a;
     //gbuffer_color_specular.a = 0.5;
 }
