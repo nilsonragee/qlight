@@ -32,6 +32,7 @@ u32 string_length( const char *c_string );
 StringView_ASCII string_view( StringView_ASCII view, u32 offset = 0, u32 length = 0 );
 StringView_ASCII string_view( String_ASCII *string, u32 offset = 0, u32 length = 0 );
 StringView_ASCII string_view( const char *c_string, u32 offset = 0, u32 length = 0 );
+inline StringView_ASCII string_view_empty() { return StringView_ASCII(); };
 
 // Creates an ASCII String with `initial_capacity_in_bytes` and
 // memory managed by `allocator`.
