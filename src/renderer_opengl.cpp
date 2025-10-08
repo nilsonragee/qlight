@@ -269,7 +269,7 @@ index_type_size_to_opengl( u32 size ) {
 	}
 }
 
-static StringView_ASCII
+StringView_ASCII
 opengl_storage_format_name( GLint internal_format ) {
 	switch ( internal_format ) {
 		// Base Internal Formats
@@ -365,7 +365,7 @@ opengl_storage_format_name( GLint internal_format ) {
 	}
 }
 
-static StringView_ASCII
+StringView_ASCII
 opengl_pixel_type_name( GLenum pixel_type ) {
 	switch ( pixel_type ) {
 		// 1 byte

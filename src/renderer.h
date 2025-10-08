@@ -459,6 +459,12 @@ struct Vertex_3D_XYZ {
 bool renderer_init();
 void renderer_shutdown();
 
+StringView_ASCII
+opengl_storage_format_name( GLint internal_format );
+
+StringView_ASCII
+opengl_pixel_type_name( GLenum pixel_type );
+
 Renderer_Shader_Stage *
 renderer_find_shader_stage( StringView_ASCII name );
 
