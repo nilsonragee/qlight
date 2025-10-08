@@ -38,6 +38,10 @@ void textures_shutdown() {
 	array_free( &g_textures.textures );
 }
 
+ArrayView< Texture > textures_get_storage_view() {
+	return array_view( &g_textures.textures );
+}
+
 Texture_ID texture_create(
 	StringView_ASCII name,
 	Vector2_u16 dimensions,

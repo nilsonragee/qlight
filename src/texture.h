@@ -50,6 +50,7 @@ constexpr u16 INVALID_TEXTURE_ID = U16_MAX;
 
 bool textures_init();
 void textures_shutdown();
+ArrayView< Texture > textures_get_storage_view();
 
 Texture_ID texture_create(
 	StringView_ASCII name,

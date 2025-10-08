@@ -898,6 +898,40 @@ int main()
 			ImGui::End();
 		}
 
+		if ( imgui_draw_textures_window ) {
+			if ( ImGui::Begin( "Textures", NULL, ImGuiWindowFlags_AlwaysAutoResize ) ) {
+				ArrayView< Texture > textures = textures_get_storage_view();
+				ForIt( textures.data, textures.size ) {
+					if ( it.name.data == NULL )
+						continue;
+
+					Texture_ID texture_id = it_index;
+					if ( ImGui::TreeNode( (void*)(intptr_t)it_index, "%hu: " StringViewFormat, texture_id, StringViewArgument( it.name ) ) ) {
+						ImGui::Text( "File: \"" StringViewFormat "\"", StringViewArgument( it.file_path ) );
+						ImGui::Text( "Dimensions: %hux%hu", it.dimensions.width, it.dimensions.height );
+						ImGui::Text( "Origin: %hux%hu", it.origin.x, it.origin.y );
+						ImGui::Text( "MIPs: %hhu", it.mipmap_levels );
+						ImGui::Text( "Channels: " StringViewFormat " (%hhu)", StringViewArgument( texture_channels_name( it.channels ) ), texture_channels_count( it.channels ) );
+						ImGui::Text( "OpenGL Storage Format: " StringViewFormat, opengl_storage_format_name( it.opengl_storage_format ) );
+						ImGui::Text( "OpenGL Pixel Type: " StringViewFormat, opengl_pixel_type_name( it.opengl_pixel_type ) );
+						ImGui::Text( "CPU Data: %u bytes", it.bytes.size );
+						ImGui::Text( "OpenGL ID: %u", it.opengl_id );
+
+						ImGui::TreePop();
+					}
+				}}
+			}
+
+			if ( g_frame_idx == 2 ) {
+				ImVec2 window_pos = ImGui::GetWindowPos();
+				ImVec2 window_size = ImGui::GetWindowSize();
+				window_pos.x += window_size.x;
+				ImGui::SetNextWindowPos( window_pos, ImGuiCond_FirstUseEver );
+			}
+
+			ImGui::End();
+		}
+
 		if ( imgui_draw_materials_window ) {
 			if ( ImGui::Begin( "Materials", NULL, ImGuiWindowFlags_AlwaysAutoResize ) ) {
 				ArrayView< Material > materials = materials_get_storage_view();
