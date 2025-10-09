@@ -26,6 +26,7 @@ Screen screen;
 bool imgui_draw_edit_window = true;
 bool imgui_draw_demo_window = false;
 bool imgui_draw_entities_window = true;
+bool imgui_draw_textures_window = true;
 bool imgui_draw_materials_window = true;
 bool freeze_light_change = false;
 bool freeze_camera = false;
@@ -899,7 +900,13 @@ int main()
 		}
 
 		if ( imgui_draw_textures_window ) {
+			static f32 imgui_textures_preview_size_min = 128.0f;
+			static f32 imgui_textures_preview_size_max = 512.0f;
+			static bool imgui_textures_correct_aspect_ratio = true;
 			if ( ImGui::Begin( "Textures", NULL, ImGuiWindowFlags_AlwaysAutoResize ) ) {
+				ImGui::DragFloat( "Min Preview size", &imgui_textures_preview_size_min, 2.0f, 8.0f, imgui_textures_preview_size_max, "%.f" );
+				ImGui::DragFloat( "Max Preview size", &imgui_textures_preview_size_max, 2.0f, imgui_textures_preview_size_min, 8192.0f, "%.f" );
+				ImGui::Checkbox( "Aspect ratio correction", &imgui_textures_correct_aspect_ratio );
 				ArrayView< Texture > textures = textures_get_storage_view();
 				ForIt( textures.data, textures.size ) {
 					if ( it.name.data == NULL )
@@ -907,6 +914,26 @@ int main()
 
 					Texture_ID texture_id = it_index;
 					if ( ImGui::TreeNode( (void*)(intptr_t)it_index, "%hu: " StringViewFormat, texture_id, StringViewArgument( it.name ) ) ) {
+						// `ImTextureID` is a user-defined type which default to `void *`.
+						// In ImGui's OpenGL implementation (imgui_impl_opengl3), it is expected to be
+						// an OpenGL texture ID with the type of `GLuint`.
+						ImTextureID texture_id = ( ImTextureID )it.opengl_id;
+						f32 width = ( f32 )it.dimensions.width;
+						f32 height = ( f32 )it.dimensions.height;
+						f32 aspect_ratio = width / height;
+						f32 final_width = QL_clamp( width, imgui_textures_preview_size_min, imgui_textures_preview_size_max );
+						f32 final_height = QL_clamp( height, imgui_textures_preview_size_min, imgui_textures_preview_size_max );
+						if ( imgui_textures_correct_aspect_ratio )
+							final_width *= aspect_ratio;
+
+						ImVec2 dimensions = ImVec2( final_width, final_height );
+						// UV's Y is reversed so the texture's orientation is not upside down.
+						ImVec2 uv_min = ImVec2( 0.0f, 1.0f );
+						ImVec2 uv_max = ImVec2( 1.0f, 0.0f );
+						ImVec4 tint_color = ImVec4( 1.0f, 1.0f, 1.0f, 1.0f );  // No tint.
+						ImVec4 border_color = ImVec4( 1.0f, 1.0f, 1.0f, 0.5f );  // 50%-opaque white border.
+						ImGui::TextUnformatted( "Preview:" );
+						ImGui::Image( texture_id, dimensions, uv_min, uv_max, tint_color, border_color );
 						ImGui::Text( "File: \"" StringViewFormat "\"", StringViewArgument( it.file_path ) );
 						ImGui::Text( "Dimensions: %hux%hu", it.dimensions.width, it.dimensions.height );
 						ImGui::Text( "Origin: %hux%hu", it.origin.x, it.origin.y );
@@ -914,7 +941,7 @@ int main()
 						ImGui::Text( "Channels: " StringViewFormat " (%hhu)", StringViewArgument( texture_channels_name( it.channels ) ), texture_channels_count( it.channels ) );
 						ImGui::Text( "OpenGL Storage Format: " StringViewFormat, opengl_storage_format_name( it.opengl_storage_format ) );
 						ImGui::Text( "OpenGL Pixel Type: " StringViewFormat, opengl_pixel_type_name( it.opengl_pixel_type ) );
-						ImGui::Text( "CPU Data: %u bytes", it.bytes.size );
+						ImGui::Text( "Size: %u bytes", it.bytes.size );
 						ImGui::Text( "OpenGL ID: %u", it.opengl_id );
 
 						ImGui::TreePop();
