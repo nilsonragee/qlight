@@ -511,10 +511,10 @@ setup_fullscreen_quad() {
 	quad_mesh.indices = carray_new( sys_allocator, index_type_size, 3 * 2 );  // 3 vertices per 2 triangles
 
 	Vertex_Quad quad_vertices[] = {
-		{ .texture_uv = Vector2_f32( 0.0f, 0.0f ) },  // Bottom-left
-		{ .texture_uv = Vector2_f32( 0.0f, 1.0f ) },  // Bottom-right
-		{ .texture_uv = Vector2_f32( 1.0f, 1.0f ) },  // Top-right
-		{ .texture_uv = Vector2_f32( 1.0f, 0.0f ) }   // Top-left
+		{ .texture_uv = Vector2_f32 { 0, 0 } },  // Bottom-left
+		{ .texture_uv = Vector2_f32 { 0, 1 } },  // Bottom-right
+		{ .texture_uv = Vector2_f32 { 1, 1 } },  // Top-right
+		{ .texture_uv = Vector2_f32 { 1, 0 } }   // Top-left
 	};
 	CArrayView vertices_view = carray_view_create(
 		/*      size */ ARRAY_SIZE( quad_vertices ),
@@ -919,7 +919,7 @@ renderer_init() {
 	g_renderer.frame_time.current = 0.0f;
 	g_renderer.frame_time.delta = 0.0f;
 
-	renderer_set_clear_color( Vector4_f32( 0.0f )  );
+	renderer_set_clear_color( Vector4_f32 { 0 } );
 
 	g_renderer.uniforms_transpose_matrix = false;
 	g_renderer.framebuffers = array_new< Renderer_Framebuffer >( sys_allocator, RENDERER_INITIAL_FRAMEBUFFERS_CAPACITY );
@@ -943,7 +943,7 @@ renderer_init() {
 	g_renderer.camera_position = NULL;
 	g_renderer.view_matrix = NULL;
 	g_renderer.projection_matrix = NULL;
-	g_renderer.ambient_light = Vector3_f32( 0.1f, 0.1f, 0.1f );
+	g_renderer.ambient_light = Vector3_f32 { 0.1f, 0.1f, 0.1f };
 
 	g_renderer.render_queue = array_new< Renderer_Render_Command >( sys_allocator, 32 );
 	g_renderer.render_queue_material_sequence = array_new< u16 >( sys_allocator, 32 );

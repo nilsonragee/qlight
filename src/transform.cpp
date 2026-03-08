@@ -4,27 +4,14 @@
 #include "../libs/GLM/gtc/matrix_transform.hpp"
 
 Quaternion quaternion_identity() {
-	return Quaternion {
-		.x = 0.0f,
-		.y = 0.0f,
-		.z = 0.0f,
-		.w = 1.0f
-	};
+	return Quaternion { 0, 0, 0, 1 };
 }
 
 Transform transform_identity() {
 	Transform transform = {
-		.position = Vector3_f32 {
-			.x = 0.0f,
-			.y = 0.0f,
-			.z = 0.0f
-		},
+		.position = Vector3_f32 { 0, 0, 0 },
 		.rotation = quaternion_identity(),
-		.scale = Vector3_f32 {
-			.x = 1.0f,
-			.y = 1.0f,
-			.z = 1.0f
-		}
+		.scale = Vector3_f32 { 1, 1, 1 }
 	};
 
 	transform_set_dirty( &transform, true );
@@ -246,14 +233,14 @@ Vector3_f32 quaternion_to_yxz_euler_rotation( Quaternion quaternion ) {
 
 Quaternion normalize( Quaternion q ) {
 	f32 length = sqrt( dot( q, q ) );
-	if ( length < 0 )
-		return Quaternion( 0.0f, 0.0f, 0.0f, 1.0f );
-	
-	f32 one_over_length = 1.0f / length;
+	if ( length < 0.0f )
+		return Quaternion { 0, 0, 0, 1 };
+
+	f32 unit_scale = 1.0f / length;
 	Quaternion result;
-	result.x = q.x * one_over_length;
-	result.y = q.y * one_over_length;
-	result.z = q.z * one_over_length;
-	result.w = q.w * one_over_length;
+	result.x = q.x * unit_scale;
+	result.y = q.y * unit_scale;
+	result.z = q.z * unit_scale;
+	result.w = q.w * unit_scale;
 	return result;
 }

@@ -5252,7 +5252,7 @@ Vector4_f64 Vector4_f64::operator / (f64 rhs) {
 // [SECTION] Matrix3x3_f32 matrix functions
 //-----------------------------------------------------------------------------
 
-Matrix3x3_f32 matrix3x3_f32_transpose(Matrix3x3_f32 matrix) {
+Matrix3x3_f32 matrix3x3_f32_transpose(Matrix3x3_f32 &matrix) {
 	Matrix3x3_f32 transpose;
 
 	transpose[0][0] = matrix[0][0];
@@ -5270,13 +5270,13 @@ Matrix3x3_f32 matrix3x3_f32_transpose(Matrix3x3_f32 matrix) {
 	return transpose;
 }
 
-f32 matrix3x3_f32_determinant(Matrix3x3_f32 matrix) {
+f32 matrix3x3_f32_determinant(Matrix3x3_f32 &matrix) {
 	return  + matrix[0][0] * ( matrix[1][1] * matrix[2][2]  -  matrix[2][1] * matrix[1][2] )
 	        - matrix[1][0] * ( matrix[0][1] * matrix[2][2]  -  matrix[2][1] * matrix[0][2] )
 	        + matrix[2][0] * ( matrix[0][1] * matrix[1][2]  -  matrix[1][1] * matrix[0][2] );
 }
 
-Matrix3x3_f32 matrix3x3_f32_inverse(Matrix3x3_f32 matrix) {
+Matrix3x3_f32 matrix3x3_f32_inverse(Matrix3x3_f32 &matrix) {
 	f32 one_over_determinant = 1.0f / (
 		+ matrix[0][0] * ( matrix[1][1] * matrix[2][2]  -  matrix[2][1] * matrix[1][2] )
 		- matrix[1][0] * ( matrix[0][1] * matrix[2][2]  -  matrix[2][1] * matrix[0][2] )
@@ -5297,7 +5297,7 @@ Matrix3x3_f32 matrix3x3_f32_inverse(Matrix3x3_f32 matrix) {
 	return inverse;
 }
 
-Matrix3x3_f32 matrix3x3_f32_multiply(Matrix3x3_f32 lhs, Matrix3x3_f32 rhs) {
+Matrix3x3_f32 matrix3x3_f32_multiply(Matrix3x3_f32 &lhs, Matrix3x3_f32 &rhs) {
 	Matrix3x3_f32 result;
 	result[0][0] =  lhs[0][0] * rhs[0][0]  +  lhs[1][0] * rhs[0][1]  +  lhs[2][0] * rhs[0][2];
 	result[0][1] =  lhs[0][1] * rhs[0][0]  +  lhs[1][1] * rhs[0][1]  +  lhs[2][1] * rhs[0][2];
@@ -5334,7 +5334,7 @@ Matrix3x3_f32::Matrix3x3_f32(Vector3_f32 column0, Vector3_f32 column1, Vector3_f
 	this->columns[2] = column2;
 }
 
-bool Matrix3x3_f32::operator == (Matrix3x3_f32 rhs) {
+bool Matrix3x3_f32::operator == (Matrix3x3_f32 &rhs) {
 	return this->columns[0] == rhs[0] &&
 	       this->columns[1] == rhs[1] &&
 	       this->columns[2] == rhs[2];
@@ -5351,27 +5351,28 @@ Vector3_f32 & Matrix3x3_f32::operator [] (int index) {
 	return this->columns[index];
 }
 
-Matrix3x3_f32 & Matrix3x3_f32::operator += (Matrix3x3_f32 rhs) {
+Matrix3x3_f32 & Matrix3x3_f32::operator += (Matrix3x3_f32 &rhs) {
 	this->columns[0] += rhs[0];
 	this->columns[1] += rhs[1];
 	this->columns[2] += rhs[2];
 	return *this;
 }
 
-Matrix3x3_f32 & Matrix3x3_f32::operator -= (Matrix3x3_f32 rhs) {
+Matrix3x3_f32 & Matrix3x3_f32::operator -= (Matrix3x3_f32 &rhs) {
 	this->columns[0] -= rhs[0];
 	this->columns[1] -= rhs[1];
 	this->columns[2] -= rhs[2];
 	return *this;
 }
 
-Matrix3x3_f32 & Matrix3x3_f32::operator *= (Matrix3x3_f32 rhs) {
+Matrix3x3_f32 & Matrix3x3_f32::operator *= (Matrix3x3_f32 &rhs) {
 	*this = *this * rhs;
 	return *this;
 }
 
-Matrix3x3_f32 & Matrix3x3_f32::operator /= (Matrix3x3_f32 rhs) {
-	*this *= matrix3x3_f32_inverse(rhs);
+Matrix3x3_f32 & Matrix3x3_f32::operator /= (Matrix3x3_f32 &rhs) {
+	Matrix3x3_f32 inverse = matrix3x3_f32_inverse(rhs);
+	*this *= inverse;
 	return *this;
 }
 
@@ -5403,7 +5404,7 @@ Matrix3x3_f32 & Matrix3x3_f32::operator /= (f32 rhs) {
 	return *this;
 }
 
-Matrix3x3_f32 Matrix3x3_f32::operator + (Matrix3x3_f32 rhs) {
+Matrix3x3_f32 Matrix3x3_f32::operator + (Matrix3x3_f32 &rhs) {
 	return Matrix3x3_f32(
 		this->columns[0] + rhs[0],
 		this->columns[1] + rhs[1],
@@ -5411,7 +5412,7 @@ Matrix3x3_f32 Matrix3x3_f32::operator + (Matrix3x3_f32 rhs) {
 	);
 }
 
-Matrix3x3_f32 Matrix3x3_f32::operator - (Matrix3x3_f32 rhs) {
+Matrix3x3_f32 Matrix3x3_f32::operator - (Matrix3x3_f32 &rhs) {
 	return Matrix3x3_f32(
 		this->columns[0] - rhs[0],
 		this->columns[1] - rhs[1],
@@ -5419,7 +5420,7 @@ Matrix3x3_f32 Matrix3x3_f32::operator - (Matrix3x3_f32 rhs) {
 	);
 }
 
-Matrix3x3_f32 Matrix3x3_f32::operator * (Matrix3x3_f32 rhs) {
+Matrix3x3_f32 Matrix3x3_f32::operator * (Matrix3x3_f32 &rhs) {
 	Matrix3x3_f32 result;
 	result[0][0] =  this->columns[0][0] * rhs[0][0]  +  this->columns[1][0] * rhs[0][1]  +  this->columns[2][0] * rhs[0][2];
 	result[0][1] =  this->columns[0][1] * rhs[0][0]  +  this->columns[1][1] * rhs[0][1]  +  this->columns[2][1] * rhs[0][2];
@@ -5433,7 +5434,7 @@ Matrix3x3_f32 Matrix3x3_f32::operator * (Matrix3x3_f32 rhs) {
 	return result;
 }
 
-Matrix3x3_f32 Matrix3x3_f32::operator / (Matrix3x3_f32 rhs) {
+Matrix3x3_f32 Matrix3x3_f32::operator / (Matrix3x3_f32 &rhs) {
 	Matrix3x3_f32 result = { *this };
 	result /= rhs;
 	return result;
@@ -5475,7 +5476,7 @@ Matrix3x3_f32 Matrix3x3_f32::operator / (f32 rhs) {
 // [SECTION] Matrix3x3_f64 matrix functions
 //-----------------------------------------------------------------------------
 
-Matrix3x3_f64 matrix3x3_f64_transpose(Matrix3x3_f64 matrix) {
+Matrix3x3_f64 matrix3x3_f64_transpose(Matrix3x3_f64 &matrix) {
 	Matrix3x3_f64 transpose;
 
 	transpose[0][0] = matrix[0][0];
@@ -5493,13 +5494,13 @@ Matrix3x3_f64 matrix3x3_f64_transpose(Matrix3x3_f64 matrix) {
 	return transpose;
 }
 
-f64 matrix3x3_f64_determinant(Matrix3x3_f64 matrix) {
+f64 matrix3x3_f64_determinant(Matrix3x3_f64 &matrix) {
 	return  + matrix[0][0] * ( matrix[1][1] * matrix[2][2]  -  matrix[2][1] * matrix[1][2] )
 	        - matrix[1][0] * ( matrix[0][1] * matrix[2][2]  -  matrix[2][1] * matrix[0][2] )
 	        + matrix[2][0] * ( matrix[0][1] * matrix[1][2]  -  matrix[1][1] * matrix[0][2] );
 }
 
-Matrix3x3_f64 matrix3x3_f64_inverse(Matrix3x3_f64 matrix) {
+Matrix3x3_f64 matrix3x3_f64_inverse(Matrix3x3_f64 &matrix) {
 	f64 one_over_determinant = 1.0f / (
 		+ matrix[0][0] * ( matrix[1][1] * matrix[2][2]  -  matrix[2][1] * matrix[1][2] )
 		- matrix[1][0] * ( matrix[0][1] * matrix[2][2]  -  matrix[2][1] * matrix[0][2] )
@@ -5520,7 +5521,7 @@ Matrix3x3_f64 matrix3x3_f64_inverse(Matrix3x3_f64 matrix) {
 	return inverse;
 }
 
-Matrix3x3_f64 matrix3x3_f64_multiply(Matrix3x3_f64 lhs, Matrix3x3_f64 rhs) {
+Matrix3x3_f64 matrix3x3_f64_multiply(Matrix3x3_f64 &lhs, Matrix3x3_f64 &rhs) {
 	Matrix3x3_f64 result;
 	result[0][0] =  lhs[0][0] * rhs[0][0]  +  lhs[1][0] * rhs[0][1]  +  lhs[2][0] * rhs[0][2];
 	result[0][1] =  lhs[0][1] * rhs[0][0]  +  lhs[1][1] * rhs[0][1]  +  lhs[2][1] * rhs[0][2];
@@ -5557,7 +5558,7 @@ Matrix3x3_f64::Matrix3x3_f64(Vector3_f64 column0, Vector3_f64 column1, Vector3_f
 	this->columns[2] = column2;
 }
 
-bool Matrix3x3_f64::operator == (Matrix3x3_f64 rhs) {
+bool Matrix3x3_f64::operator == (Matrix3x3_f64 &rhs) {
 	return this->columns[0] == rhs[0] &&
 	       this->columns[1] == rhs[1] &&
 	       this->columns[2] == rhs[2];
@@ -5574,27 +5575,28 @@ Vector3_f64 & Matrix3x3_f64::operator [] (int index) {
 	return this->columns[index];
 }
 
-Matrix3x3_f64 & Matrix3x3_f64::operator += (Matrix3x3_f64 rhs) {
+Matrix3x3_f64 & Matrix3x3_f64::operator += (Matrix3x3_f64 &rhs) {
 	this->columns[0] += rhs[0];
 	this->columns[1] += rhs[1];
 	this->columns[2] += rhs[2];
 	return *this;
 }
 
-Matrix3x3_f64 & Matrix3x3_f64::operator -= (Matrix3x3_f64 rhs) {
+Matrix3x3_f64 & Matrix3x3_f64::operator -= (Matrix3x3_f64 &rhs) {
 	this->columns[0] -= rhs[0];
 	this->columns[1] -= rhs[1];
 	this->columns[2] -= rhs[2];
 	return *this;
 }
 
-Matrix3x3_f64 & Matrix3x3_f64::operator *= (Matrix3x3_f64 rhs) {
+Matrix3x3_f64 & Matrix3x3_f64::operator *= (Matrix3x3_f64 &rhs) {
 	*this = *this * rhs;
 	return *this;
 }
 
-Matrix3x3_f64 & Matrix3x3_f64::operator /= (Matrix3x3_f64 rhs) {
-	*this *= matrix3x3_f64_inverse(rhs);
+Matrix3x3_f64 & Matrix3x3_f64::operator /= (Matrix3x3_f64 &rhs) {
+	Matrix3x3_f64 inverse = matrix3x3_f64_inverse(rhs);
+	*this *= inverse;
 	return *this;
 }
 
@@ -5626,7 +5628,7 @@ Matrix3x3_f64 & Matrix3x3_f64::operator /= (f64 rhs) {
 	return *this;
 }
 
-Matrix3x3_f64 Matrix3x3_f64::operator + (Matrix3x3_f64 rhs) {
+Matrix3x3_f64 Matrix3x3_f64::operator + (Matrix3x3_f64 &rhs) {
 	return Matrix3x3_f64(
 		this->columns[0] + rhs[0],
 		this->columns[1] + rhs[1],
@@ -5634,7 +5636,7 @@ Matrix3x3_f64 Matrix3x3_f64::operator + (Matrix3x3_f64 rhs) {
 	);
 }
 
-Matrix3x3_f64 Matrix3x3_f64::operator - (Matrix3x3_f64 rhs) {
+Matrix3x3_f64 Matrix3x3_f64::operator - (Matrix3x3_f64 &rhs) {
 	return Matrix3x3_f64(
 		this->columns[0] - rhs[0],
 		this->columns[1] - rhs[1],
@@ -5642,7 +5644,7 @@ Matrix3x3_f64 Matrix3x3_f64::operator - (Matrix3x3_f64 rhs) {
 	);
 }
 
-Matrix3x3_f64 Matrix3x3_f64::operator * (Matrix3x3_f64 rhs) {
+Matrix3x3_f64 Matrix3x3_f64::operator * (Matrix3x3_f64 &rhs) {
 	Matrix3x3_f64 result;
 	result[0][0] =  this->columns[0][0] * rhs[0][0]  +  this->columns[1][0] * rhs[0][1]  +  this->columns[2][0] * rhs[0][2];
 	result[0][1] =  this->columns[0][1] * rhs[0][0]  +  this->columns[1][1] * rhs[0][1]  +  this->columns[2][1] * rhs[0][2];
@@ -5656,7 +5658,7 @@ Matrix3x3_f64 Matrix3x3_f64::operator * (Matrix3x3_f64 rhs) {
 	return result;
 }
 
-Matrix3x3_f64 Matrix3x3_f64::operator / (Matrix3x3_f64 rhs) {
+Matrix3x3_f64 Matrix3x3_f64::operator / (Matrix3x3_f64 &rhs) {
 	Matrix3x3_f64 result = { *this };
 	result /= rhs;
 	return result;
@@ -5698,7 +5700,7 @@ Matrix3x3_f64 Matrix3x3_f64::operator / (f64 rhs) {
 // [SECTION] Matrix4x4_f32 matrix functions
 //-----------------------------------------------------------------------------
 
-Matrix4x4_f32 matrix4x4_f32_transpose(Matrix4x4_f32 matrix) {
+Matrix4x4_f32 matrix4x4_f32_transpose(Matrix4x4_f32 &matrix) {
 	Matrix4x4_f32 transpose;
 
 	transpose[0][0] = matrix[0][0];
@@ -5724,7 +5726,7 @@ Matrix4x4_f32 matrix4x4_f32_transpose(Matrix4x4_f32 matrix) {
 	return transpose;
 }
 
-f32 matrix4x4_f32_determinant(Matrix4x4_f32 matrix) {
+f32 matrix4x4_f32_determinant(Matrix4x4_f32 &matrix) {
 	f32 sub_factor_00 =  matrix[2][2] * matrix[3][3]  -  matrix[3][2] * matrix[2][3];
 	f32 sub_factor_01 =  matrix[2][1] * matrix[3][3]  -  matrix[3][1] * matrix[2][3];
 	f32 sub_factor_02 =  matrix[2][1] * matrix[3][2]  -  matrix[3][1] * matrix[2][2];
@@ -5743,7 +5745,7 @@ f32 matrix4x4_f32_determinant(Matrix4x4_f32 matrix) {
 	        matrix[0][2] * determinant_coefficient[2] + matrix[0][3] * determinant_coefficient[3];
 }
 
-Matrix4x4_f32 matrix4x4_f32_inverse(Matrix4x4_f32 matrix) {
+Matrix4x4_f32 matrix4x4_f32_inverse(Matrix4x4_f32 &matrix) {
 	f32 coefficient_00 =  matrix[2][2] * matrix[3][3]  -  matrix[3][2] * matrix[2][3];
 	f32 coefficient_02 =  matrix[1][2] * matrix[3][3]  -  matrix[3][2] * matrix[1][3];
 	f32 coefficient_03 =  matrix[1][2] * matrix[2][3]  -  matrix[2][2] * matrix[1][3];
@@ -5804,7 +5806,7 @@ Matrix4x4_f32 matrix4x4_f32_inverse(Matrix4x4_f32 matrix) {
 	return inverse * one_over_determinant;
 }
 
-Matrix4x4_f32 matrix4x4_f32_multiply(Matrix4x4_f32 lhs, Matrix4x4_f32 rhs) {
+Matrix4x4_f32 matrix4x4_f32_multiply(Matrix4x4_f32 &lhs, Matrix4x4_f32 &rhs) {
 	Matrix4x4_f32 result;
 	result[0] =  lhs[0] * rhs[0][0]  +  lhs[1] * rhs[0][1]  +  lhs[2] * rhs[0][2]  + lhs[3] * rhs[0][3];
 	result[1] =  lhs[0] * rhs[1][0]  +  lhs[1] * rhs[1][1]  +  lhs[2] * rhs[1][2]  + lhs[3] * rhs[1][3];
@@ -5838,7 +5840,7 @@ Matrix4x4_f32::Matrix4x4_f32(Vector4_f32 column0, Vector4_f32 column1, Vector4_f
 	this->columns[3] = column3;
 }
 
-bool Matrix4x4_f32::operator == (Matrix4x4_f32 rhs) {
+bool Matrix4x4_f32::operator == (Matrix4x4_f32 &rhs) {
 	return this->columns[0] == rhs[0] &&
 	       this->columns[1] == rhs[1] &&
 	       this->columns[2] == rhs[2] &&
@@ -5857,7 +5859,7 @@ Vector4_f32 & Matrix4x4_f32::operator [] (int index) {
 	return this->columns[index];
 }
 
-Matrix4x4_f32 & Matrix4x4_f32::operator += (Matrix4x4_f32 rhs) {
+Matrix4x4_f32 & Matrix4x4_f32::operator += (Matrix4x4_f32 &rhs) {
 	this->columns[0] += rhs[0];
 	this->columns[1] += rhs[1];
 	this->columns[2] += rhs[2];
@@ -5865,7 +5867,7 @@ Matrix4x4_f32 & Matrix4x4_f32::operator += (Matrix4x4_f32 rhs) {
 	return *this;
 }
 
-Matrix4x4_f32 & Matrix4x4_f32::operator -= (Matrix4x4_f32 rhs) {
+Matrix4x4_f32 & Matrix4x4_f32::operator -= (Matrix4x4_f32 &rhs) {
 	this->columns[0] -= rhs[0];
 	this->columns[1] -= rhs[1];
 	this->columns[2] -= rhs[2];
@@ -5873,13 +5875,14 @@ Matrix4x4_f32 & Matrix4x4_f32::operator -= (Matrix4x4_f32 rhs) {
 	return *this;
 }
 
-Matrix4x4_f32 & Matrix4x4_f32::operator *= (Matrix4x4_f32 rhs) {
+Matrix4x4_f32 & Matrix4x4_f32::operator *= (Matrix4x4_f32 &rhs) {
 	*this = *this * rhs;
 	return *this;
 }
 
-Matrix4x4_f32 & Matrix4x4_f32::operator /= (Matrix4x4_f32 rhs) {
-	*this *= matrix4x4_f32_inverse(rhs);
+Matrix4x4_f32 & Matrix4x4_f32::operator /= (Matrix4x4_f32 &rhs) {
+	Matrix4x4_f32 inverse = matrix4x4_f32_inverse(rhs);
+	*this *= inverse;
 	return *this;
 }
 
@@ -5915,7 +5918,7 @@ Matrix4x4_f32 & Matrix4x4_f32::operator /= (f32 rhs) {
 	return *this;
 }
 
-Matrix4x4_f32 Matrix4x4_f32::operator + (Matrix4x4_f32 rhs) {
+Matrix4x4_f32 Matrix4x4_f32::operator + (Matrix4x4_f32 &rhs) {
 	return Matrix4x4_f32(
 		this->columns[0] + rhs[0],
 		this->columns[1] + rhs[1],
@@ -5924,7 +5927,7 @@ Matrix4x4_f32 Matrix4x4_f32::operator + (Matrix4x4_f32 rhs) {
 	);
 }
 
-Matrix4x4_f32 Matrix4x4_f32::operator - (Matrix4x4_f32 rhs) {
+Matrix4x4_f32 Matrix4x4_f32::operator - (Matrix4x4_f32 &rhs) {
 	return Matrix4x4_f32(
 		this->columns[0] - rhs[0],
 		this->columns[1] - rhs[1],
@@ -5933,7 +5936,7 @@ Matrix4x4_f32 Matrix4x4_f32::operator - (Matrix4x4_f32 rhs) {
 	);
 }
 
-Matrix4x4_f32 Matrix4x4_f32::operator * (Matrix4x4_f32 rhs) {
+Matrix4x4_f32 Matrix4x4_f32::operator * (Matrix4x4_f32 &rhs) {
 	Matrix4x4_f32 result;
 	result[0] =  this->columns[0] * rhs[0][0]  +  this->columns[1] * rhs[0][1]  +  this->columns[2] * rhs[0][2]  + this->columns[3] * rhs[0][3];
 	result[1] =  this->columns[0] * rhs[1][0]  +  this->columns[1] * rhs[1][1]  +  this->columns[2] * rhs[1][2]  + this->columns[3] * rhs[1][3];
@@ -5942,7 +5945,7 @@ Matrix4x4_f32 Matrix4x4_f32::operator * (Matrix4x4_f32 rhs) {
 	return result;
 }
 
-Matrix4x4_f32 Matrix4x4_f32::operator / (Matrix4x4_f32 rhs) {
+Matrix4x4_f32 Matrix4x4_f32::operator / (Matrix4x4_f32 &rhs) {
 	Matrix4x4_f32 result = { *this };
 	result /= rhs;
 	return result;
@@ -5988,7 +5991,7 @@ Matrix4x4_f32 Matrix4x4_f32::operator / (f32 rhs) {
 // [SECTION] Matrix4x4_f64 matrix functions
 //-----------------------------------------------------------------------------
 
-Matrix4x4_f64 matrix4x4_f64_transpose(Matrix4x4_f64 matrix) {
+Matrix4x4_f64 matrix4x4_f64_transpose(Matrix4x4_f64 &matrix) {
 	Matrix4x4_f64 transpose;
 
 	transpose[0][0] = matrix[0][0];
@@ -6014,7 +6017,7 @@ Matrix4x4_f64 matrix4x4_f64_transpose(Matrix4x4_f64 matrix) {
 	return transpose;
 }
 
-f64 matrix4x4_f64_determinant(Matrix4x4_f64 matrix) {
+f64 matrix4x4_f64_determinant(Matrix4x4_f64 &matrix) {
 	f64 sub_factor_00 =  matrix[2][2] * matrix[3][3]  -  matrix[3][2] * matrix[2][3];
 	f64 sub_factor_01 =  matrix[2][1] * matrix[3][3]  -  matrix[3][1] * matrix[2][3];
 	f64 sub_factor_02 =  matrix[2][1] * matrix[3][2]  -  matrix[3][1] * matrix[2][2];
@@ -6033,7 +6036,7 @@ f64 matrix4x4_f64_determinant(Matrix4x4_f64 matrix) {
 	        matrix[0][2] * determinant_coefficient[2] + matrix[0][3] * determinant_coefficient[3];
 }
 
-Matrix4x4_f64 matrix4x4_f64_inverse(Matrix4x4_f64 matrix) {
+Matrix4x4_f64 matrix4x4_f64_inverse(Matrix4x4_f64 &matrix) {
 	f64 coefficient_00 =  matrix[2][2] * matrix[3][3]  -  matrix[3][2] * matrix[2][3];
 	f64 coefficient_02 =  matrix[1][2] * matrix[3][3]  -  matrix[3][2] * matrix[1][3];
 	f64 coefficient_03 =  matrix[1][2] * matrix[2][3]  -  matrix[2][2] * matrix[1][3];
@@ -6094,7 +6097,7 @@ Matrix4x4_f64 matrix4x4_f64_inverse(Matrix4x4_f64 matrix) {
 	return inverse * one_over_determinant;
 }
 
-Matrix4x4_f64 matrix4x4_f64_multiply(Matrix4x4_f64 lhs, Matrix4x4_f64 rhs) {
+Matrix4x4_f64 matrix4x4_f64_multiply(Matrix4x4_f64 &lhs, Matrix4x4_f64 &rhs) {
 	Matrix4x4_f64 result;
 	result[0] =  lhs[0] * rhs[0][0]  +  lhs[1] * rhs[0][1]  +  lhs[2] * rhs[0][2]  + lhs[3] * rhs[0][3];
 	result[1] =  lhs[0] * rhs[1][0]  +  lhs[1] * rhs[1][1]  +  lhs[2] * rhs[1][2]  + lhs[3] * rhs[1][3];
@@ -6128,7 +6131,7 @@ Matrix4x4_f64::Matrix4x4_f64(Vector4_f64 column0, Vector4_f64 column1, Vector4_f
 	this->columns[3] = column3;
 }
 
-bool Matrix4x4_f64::operator == (Matrix4x4_f64 rhs) {
+bool Matrix4x4_f64::operator == (Matrix4x4_f64 &rhs) {
 	return this->columns[0] == rhs[0] &&
 	       this->columns[1] == rhs[1] &&
 	       this->columns[2] == rhs[2] &&
@@ -6147,7 +6150,7 @@ Vector4_f64 & Matrix4x4_f64::operator [] (int index) {
 	return this->columns[index];
 }
 
-Matrix4x4_f64 & Matrix4x4_f64::operator += (Matrix4x4_f64 rhs) {
+Matrix4x4_f64 & Matrix4x4_f64::operator += (Matrix4x4_f64 &rhs) {
 	this->columns[0] += rhs[0];
 	this->columns[1] += rhs[1];
 	this->columns[2] += rhs[2];
@@ -6155,7 +6158,7 @@ Matrix4x4_f64 & Matrix4x4_f64::operator += (Matrix4x4_f64 rhs) {
 	return *this;
 }
 
-Matrix4x4_f64 & Matrix4x4_f64::operator -= (Matrix4x4_f64 rhs) {
+Matrix4x4_f64 & Matrix4x4_f64::operator -= (Matrix4x4_f64 &rhs) {
 	this->columns[0] -= rhs[0];
 	this->columns[1] -= rhs[1];
 	this->columns[2] -= rhs[2];
@@ -6163,13 +6166,14 @@ Matrix4x4_f64 & Matrix4x4_f64::operator -= (Matrix4x4_f64 rhs) {
 	return *this;
 }
 
-Matrix4x4_f64 & Matrix4x4_f64::operator *= (Matrix4x4_f64 rhs) {
+Matrix4x4_f64 & Matrix4x4_f64::operator *= (Matrix4x4_f64 &rhs) {
 	*this = *this * rhs;
 	return *this;
 }
 
-Matrix4x4_f64 & Matrix4x4_f64::operator /= (Matrix4x4_f64 rhs) {
-	*this *= matrix4x4_f64_inverse(rhs);
+Matrix4x4_f64 & Matrix4x4_f64::operator /= (Matrix4x4_f64 &rhs) {
+	Matrix4x4_f64 inverse = matrix4x4_f64_inverse(rhs);
+	*this *= inverse;
 	return *this;
 }
 
@@ -6205,7 +6209,7 @@ Matrix4x4_f64 & Matrix4x4_f64::operator /= (f64 rhs) {
 	return *this;
 }
 
-Matrix4x4_f64 Matrix4x4_f64::operator + (Matrix4x4_f64 rhs) {
+Matrix4x4_f64 Matrix4x4_f64::operator + (Matrix4x4_f64 &rhs) {
 	return Matrix4x4_f64(
 		this->columns[0] + rhs[0],
 		this->columns[1] + rhs[1],
@@ -6214,7 +6218,7 @@ Matrix4x4_f64 Matrix4x4_f64::operator + (Matrix4x4_f64 rhs) {
 	);
 }
 
-Matrix4x4_f64 Matrix4x4_f64::operator - (Matrix4x4_f64 rhs) {
+Matrix4x4_f64 Matrix4x4_f64::operator - (Matrix4x4_f64 &rhs) {
 	return Matrix4x4_f64(
 		this->columns[0] - rhs[0],
 		this->columns[1] - rhs[1],
@@ -6223,7 +6227,7 @@ Matrix4x4_f64 Matrix4x4_f64::operator - (Matrix4x4_f64 rhs) {
 	);
 }
 
-Matrix4x4_f64 Matrix4x4_f64::operator * (Matrix4x4_f64 rhs) {
+Matrix4x4_f64 Matrix4x4_f64::operator * (Matrix4x4_f64 &rhs) {
 	Matrix4x4_f64 result;
 	result[0] =  this->columns[0] * rhs[0][0]  +  this->columns[1] * rhs[0][1]  +  this->columns[2] * rhs[0][2]  + this->columns[3] * rhs[0][3];
 	result[1] =  this->columns[0] * rhs[1][0]  +  this->columns[1] * rhs[1][1]  +  this->columns[2] * rhs[1][2]  + this->columns[3] * rhs[1][3];
@@ -6232,7 +6236,7 @@ Matrix4x4_f64 Matrix4x4_f64::operator * (Matrix4x4_f64 rhs) {
 	return result;
 }
 
-Matrix4x4_f64 Matrix4x4_f64::operator / (Matrix4x4_f64 rhs) {
+Matrix4x4_f64 Matrix4x4_f64::operator / (Matrix4x4_f64 &rhs) {
 	Matrix4x4_f64 result = { *this };
 	result /= rhs;
 	return result;

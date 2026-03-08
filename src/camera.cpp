@@ -381,7 +381,7 @@ void camera_update_view_and_rotation( Camera *camera ) {
 }
 
 Vector3_f32 rotate_vector3_by_quaternion( Quaternion q, Vector3_f32 v ) {
-	Vector3_f32 qv = Vector3_f32( q.x, q.y, q.z );
+	Vector3_f32 qv = { q.x, q.y, q.z };
 	Vector3_f32 uv = cross( qv, v );
 	Vector3_f32 uuv = cross( qv, uv );
 	Vector3_f32 result = v + (  ( uv * q.w )  + uuv  ) * 2.0f;

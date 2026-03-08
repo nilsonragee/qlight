@@ -1160,25 +1160,25 @@ struct Matrix3x3_f32 {
 	Matrix3x3_f32(f32 value);
 	Matrix3x3_f32(Vector3_f32 column0, Vector3_f32 column1, Vector3_f32 column2);
 
-	bool operator == (Matrix3x3_f32 rhs);
+	bool operator == (Matrix3x3_f32 &rhs);
 	bool operator == (f32 rhs);
 
 	Vector3_f32 & operator [] (int index);
 
-	Matrix3x3_f32 & operator += (Matrix3x3_f32 rhs);
-	Matrix3x3_f32 & operator -= (Matrix3x3_f32 rhs);
-	Matrix3x3_f32 & operator *= (Matrix3x3_f32 rhs);
-	Matrix3x3_f32 & operator /= (Matrix3x3_f32 rhs);
+	Matrix3x3_f32 & operator += (Matrix3x3_f32 &rhs);
+	Matrix3x3_f32 & operator -= (Matrix3x3_f32 &rhs);
+	Matrix3x3_f32 & operator *= (Matrix3x3_f32 &rhs);
+	Matrix3x3_f32 & operator /= (Matrix3x3_f32 &rhs);
 
 	Matrix3x3_f32 & operator += (f32 rhs);
 	Matrix3x3_f32 & operator -= (f32 rhs);
 	Matrix3x3_f32 & operator *= (f32 rhs);
 	Matrix3x3_f32 & operator /= (f32 rhs);
 
-	Matrix3x3_f32 operator + (Matrix3x3_f32 rhs);
-	Matrix3x3_f32 operator - (Matrix3x3_f32 rhs);
-	Matrix3x3_f32 operator * (Matrix3x3_f32 rhs);
-	Matrix3x3_f32 operator / (Matrix3x3_f32 rhs);
+	Matrix3x3_f32 operator + (Matrix3x3_f32 &rhs);
+	Matrix3x3_f32 operator - (Matrix3x3_f32 &rhs);
+	Matrix3x3_f32 operator * (Matrix3x3_f32 &rhs);
+	Matrix3x3_f32 operator / (Matrix3x3_f32 &rhs);
 
 	Matrix3x3_f32 operator + (f32 rhs);
 	Matrix3x3_f32 operator - (f32 rhs);
@@ -1186,10 +1186,10 @@ struct Matrix3x3_f32 {
 	Matrix3x3_f32 operator / (f32 rhs);
 };
 
-Matrix3x3_f32  matrix3x3_f32_transpose(Matrix3x3_f32 matrix);
-          f32  matrix3x3_f32_determinant(Matrix3x3_f32 matrix);
-Matrix3x3_f32  matrix3x3_f32_inverse(Matrix3x3_f32 matrix);
-Matrix3x3_f32  matrix3x3_f32_multiply(Matrix3x3_f32 lhs, Matrix3x3_f32 rhs);
+Matrix3x3_f32  matrix3x3_f32_transpose(Matrix3x3_f32 &matrix);
+          f32  matrix3x3_f32_determinant(Matrix3x3_f32 &matrix);
+Matrix3x3_f32  matrix3x3_f32_inverse(Matrix3x3_f32 &matrix);
+Matrix3x3_f32  matrix3x3_f32_multiply(Matrix3x3_f32 &lhs, Matrix3x3_f32 &rhs);
 
 struct Matrix3x3_f64 {
 	Vector3_f64 columns[3];
@@ -1198,25 +1198,25 @@ struct Matrix3x3_f64 {
 	Matrix3x3_f64(f64 value);
 	Matrix3x3_f64(Vector3_f64 column0, Vector3_f64 column1, Vector3_f64 column2);
 
-	bool operator == (Matrix3x3_f64 rhs);
+	bool operator == (Matrix3x3_f64 &rhs);
 	bool operator == (f64 rhs);
 
 	Vector3_f64 & operator [] (int index);
 
-	Matrix3x3_f64 & operator += (Matrix3x3_f64 rhs);
-	Matrix3x3_f64 & operator -= (Matrix3x3_f64 rhs);
-	Matrix3x3_f64 & operator *= (Matrix3x3_f64 rhs);
-	Matrix3x3_f64 & operator /= (Matrix3x3_f64 rhs);
+	Matrix3x3_f64 & operator += (Matrix3x3_f64 &rhs);
+	Matrix3x3_f64 & operator -= (Matrix3x3_f64 &rhs);
+	Matrix3x3_f64 & operator *= (Matrix3x3_f64 &rhs);
+	Matrix3x3_f64 & operator /= (Matrix3x3_f64 &rhs);
 
 	Matrix3x3_f64 & operator += (f64 rhs);
 	Matrix3x3_f64 & operator -= (f64 rhs);
 	Matrix3x3_f64 & operator *= (f64 rhs);
 	Matrix3x3_f64 & operator /= (f64 rhs);
 
-	Matrix3x3_f64 operator + (Matrix3x3_f64 rhs);
-	Matrix3x3_f64 operator - (Matrix3x3_f64 rhs);
-	Matrix3x3_f64 operator * (Matrix3x3_f64 rhs);
-	Matrix3x3_f64 operator / (Matrix3x3_f64 rhs);
+	Matrix3x3_f64 operator + (Matrix3x3_f64 &rhs);
+	Matrix3x3_f64 operator - (Matrix3x3_f64 &rhs);
+	Matrix3x3_f64 operator * (Matrix3x3_f64 &rhs);
+	Matrix3x3_f64 operator / (Matrix3x3_f64 &rhs);
 
 	Matrix3x3_f64 operator + (f64 rhs);
 	Matrix3x3_f64 operator - (f64 rhs);
@@ -1224,10 +1224,10 @@ struct Matrix3x3_f64 {
 	Matrix3x3_f64 operator / (f64 rhs);
 };
 
-Matrix3x3_f64  matrix3x3_f64_transpose(Matrix3x3_f64 matrix);
-          f64  matrix3x3_f64_determinant(Matrix3x3_f64 matrix);
-Matrix3x3_f64  matrix3x3_f64_inverse(Matrix3x3_f64 matrix);
-Matrix3x3_f64  matrix3x3_f64_multiply(Matrix3x3_f64 lhs, Matrix3x3_f64 rhs);
+Matrix3x3_f64  matrix3x3_f64_transpose(Matrix3x3_f64 &matrix);
+          f64  matrix3x3_f64_determinant(Matrix3x3_f64 &matrix);
+Matrix3x3_f64  matrix3x3_f64_inverse(Matrix3x3_f64 &matrix);
+Matrix3x3_f64  matrix3x3_f64_multiply(Matrix3x3_f64 &lhs, Matrix3x3_f64 &rhs);
 
 //-----------------------------------------------------------------------------
 // [SECTION] Matrix4x4: f32 -> f64
@@ -1240,25 +1240,25 @@ struct Matrix4x4_f32 {
 	Matrix4x4_f32(f32 value);
 	Matrix4x4_f32(Vector4_f32 column0, Vector4_f32 column1, Vector4_f32 column2, Vector4_f32 column3);
 
-	bool operator == (Matrix4x4_f32 rhs);
+	bool operator == (Matrix4x4_f32 &rhs);
 	bool operator == (f32 rhs);
 
 	Vector4_f32 & operator [] (int index);
 
-	Matrix4x4_f32 & operator += (Matrix4x4_f32 rhs);
-	Matrix4x4_f32 & operator -= (Matrix4x4_f32 rhs);
-	Matrix4x4_f32 & operator *= (Matrix4x4_f32 rhs);
-	Matrix4x4_f32 & operator /= (Matrix4x4_f32 rhs);
+	Matrix4x4_f32 & operator += (Matrix4x4_f32 &rhs);
+	Matrix4x4_f32 & operator -= (Matrix4x4_f32 &rhs);
+	Matrix4x4_f32 & operator *= (Matrix4x4_f32 &rhs);
+	Matrix4x4_f32 & operator /= (Matrix4x4_f32 &rhs);
 
 	Matrix4x4_f32 & operator += (f32 rhs);
 	Matrix4x4_f32 & operator -= (f32 rhs);
 	Matrix4x4_f32 & operator *= (f32 rhs);
 	Matrix4x4_f32 & operator /= (f32 rhs);
 
-	Matrix4x4_f32 operator + (Matrix4x4_f32 rhs);
-	Matrix4x4_f32 operator - (Matrix4x4_f32 rhs);
-	Matrix4x4_f32 operator * (Matrix4x4_f32 rhs);
-	Matrix4x4_f32 operator / (Matrix4x4_f32 rhs);
+	Matrix4x4_f32 operator + (Matrix4x4_f32 &rhs);
+	Matrix4x4_f32 operator - (Matrix4x4_f32 &rhs);
+	Matrix4x4_f32 operator * (Matrix4x4_f32 &rhs);
+	Matrix4x4_f32 operator / (Matrix4x4_f32 &rhs);
 
 	Matrix4x4_f32 operator + (f32 rhs);
 	Matrix4x4_f32 operator - (f32 rhs);
@@ -1266,10 +1266,10 @@ struct Matrix4x4_f32 {
 	Matrix4x4_f32 operator / (f32 rhs);
 };
 
-Matrix4x4_f32  matrix4x4_f32_transpose(Matrix4x4_f32 matrix);
-          f32  matrix4x4_f32_determinant(Matrix4x4_f32 matrix);
-Matrix4x4_f32  matrix4x4_f32_inverse(Matrix4x4_f32 matrix);
-Matrix4x4_f32  matrix4x4_f32_multiply(Matrix4x4_f32 lhs, Matrix4x4_f32 rhs);
+Matrix4x4_f32  matrix4x4_f32_transpose(Matrix4x4_f32 &matrix);
+          f32  matrix4x4_f32_determinant(Matrix4x4_f32 &matrix);
+Matrix4x4_f32  matrix4x4_f32_inverse(Matrix4x4_f32 &matrix);
+Matrix4x4_f32  matrix4x4_f32_multiply(Matrix4x4_f32 &lhs, Matrix4x4_f32 &rhs);
 
 struct Matrix4x4_f64 {
 	Vector4_f64 columns[4];
@@ -1278,25 +1278,25 @@ struct Matrix4x4_f64 {
 	Matrix4x4_f64(f64 value);
 	Matrix4x4_f64(Vector4_f64 column0, Vector4_f64 column1, Vector4_f64 column2, Vector4_f64 column3);
 
-	bool operator == (Matrix4x4_f64 rhs);
+	bool operator == (Matrix4x4_f64 &rhs);
 	bool operator == (f64 rhs);
 
 	Vector4_f64 & operator [] (int index);
 
-	Matrix4x4_f64 & operator += (Matrix4x4_f64 rhs);
-	Matrix4x4_f64 & operator -= (Matrix4x4_f64 rhs);
-	Matrix4x4_f64 & operator *= (Matrix4x4_f64 rhs);
-	Matrix4x4_f64 & operator /= (Matrix4x4_f64 rhs);
+	Matrix4x4_f64 & operator += (Matrix4x4_f64 &rhs);
+	Matrix4x4_f64 & operator -= (Matrix4x4_f64 &rhs);
+	Matrix4x4_f64 & operator *= (Matrix4x4_f64 &rhs);
+	Matrix4x4_f64 & operator /= (Matrix4x4_f64 &rhs);
 
 	Matrix4x4_f64 & operator += (f64 rhs);
 	Matrix4x4_f64 & operator -= (f64 rhs);
 	Matrix4x4_f64 & operator *= (f64 rhs);
 	Matrix4x4_f64 & operator /= (f64 rhs);
 
-	Matrix4x4_f64 operator + (Matrix4x4_f64 rhs);
-	Matrix4x4_f64 operator - (Matrix4x4_f64 rhs);
-	Matrix4x4_f64 operator * (Matrix4x4_f64 rhs);
-	Matrix4x4_f64 operator / (Matrix4x4_f64 rhs);
+	Matrix4x4_f64 operator + (Matrix4x4_f64 &rhs);
+	Matrix4x4_f64 operator - (Matrix4x4_f64 &rhs);
+	Matrix4x4_f64 operator * (Matrix4x4_f64 &rhs);
+	Matrix4x4_f64 operator / (Matrix4x4_f64 &rhs);
 
 	Matrix4x4_f64 operator + (f64 rhs);
 	Matrix4x4_f64 operator - (f64 rhs);
@@ -1304,13 +1304,13 @@ struct Matrix4x4_f64 {
 	Matrix4x4_f64 operator / (f64 rhs);
 };
 
-Matrix4x4_f64  matrix4x4_f64_transpose(Matrix4x4_f32 matrix);
-          f64  matrix4x4_f64_determinant(Matrix4x4_f32 matrix);
-Matrix4x4_f64  matrix4x4_f64_inverse(Matrix4x4_f32 matrix);
-Matrix4x4_f64  matrix4x4_f64_multiply(Matrix4x4_f32 lhs, Matrix4x4_f32 rhs);
+Matrix4x4_f64  matrix4x4_f64_transpose(Matrix4x4_f32 &matrix);
+          f64  matrix4x4_f64_determinant(Matrix4x4_f32 &matrix);
+Matrix4x4_f64  matrix4x4_f64_inverse(Matrix4x4_f32 &matrix);
+Matrix4x4_f64  matrix4x4_f64_multiply(Matrix4x4_f32 &lhs, Matrix4x4_f32 &rhs);
 
-constexpr Vector3_f32 WORLD_DIRECTION_RIGHT   = Vector3_f32( 1.0f,  0.0f,  0.0f );
-constexpr Vector3_f32 WORLD_DIRECTION_UP      = Vector3_f32( 0.0f,  1.0f,  0.0f );
-constexpr Vector3_f32 WORLD_DIRECTION_FORWARD = Vector3_f32( 0.0f,  0.0f,  1.0f );
+constexpr Vector3_f32 WORLD_DIRECTION_RIGHT   = Vector3_f32 { 1,  0,  0 };
+constexpr Vector3_f32 WORLD_DIRECTION_UP      = Vector3_f32 { 0,  1,  0 };
+constexpr Vector3_f32 WORLD_DIRECTION_FORWARD = Vector3_f32 { 0,  0,  1 };
 
 #endif /* QLIGHT_MATH_H */

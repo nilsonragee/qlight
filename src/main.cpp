@@ -601,7 +601,7 @@ int main()
 		// /*   position */ { 0.0f, 0.0f, -3.0f },
 		/*   position */ { 3.1f, 2.0f, 2.7f },
 		// /*   rotation */ quaternion_identity(),
-		/*   rotation */ Quaternion( -0.102f, 0.882f, -0.226f, -0.401f ),
+		/*   rotation */ Quaternion { -0.102f, 0.882f, -0.226f, -0.401f },
 		/* ortho_size */ 5.0f,
 		// /*        fov */ 80.0f,
 		/*        fov */ 40.0f,
@@ -636,7 +636,7 @@ int main()
 		entity_point_light.transform = transform_identity();
 		entity_point_light.transform.position.y = 10.0f;
 		// Entity_Point_Light
-		entity_point_light.color = { 0.0f, 0.0f, 1.0f };
+		entity_point_light.color = { 0, 0, 1 };
 		entity_point_light.intensity = 1.0f;
 		map_entity_add( map, &entity_point_light );
 

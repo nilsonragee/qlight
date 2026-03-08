@@ -21,7 +21,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <PreferredToolArchitecture>
     </PreferredToolArchitecture>
@@ -29,7 +29,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <PreferredToolArchitecture>
@@ -49,14 +49,14 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)build\vs2019_$(ProjectName)_$(Configuration)_$(Platform)\</OutDir>
-    <IntDir>$(SolutionDir)build\vs2019_$(ProjectName)_$(Configuration)_$(Platform)\intermediate\</IntDir>
+    <OutDir>$(SolutionDir)build\vs2026_$(ProjectName)_$(Configuration)_$(Platform)\</OutDir>
+    <IntDir>$(SolutionDir)build\vs2026_$(ProjectName)_$(Configuration)_$(Platform)\intermediate\</IntDir>
     <TargetName>$(ProjectName)_dbg</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)build\vs2019_$(ProjectName)_$(Configuration)_$(Platform)\</OutDir>
-    <IntDir>$(SolutionDir)build\vs2019_$(ProjectName)_$(Configuration)_$(Platform)\intermediate\</IntDir>
+    <OutDir>$(SolutionDir)build\vs2026_$(ProjectName)_$(Configuration)_$(Platform)\</OutDir>
+    <IntDir>$(SolutionDir)build\vs2026_$(ProjectName)_$(Configuration)_$(Platform)\intermediate\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
