@@ -281,7 +281,7 @@ opengl_storage_format_name( GLint internal_format ) {
 		case GL_RGBA: return "GL_RGBA";
 
 		// Sized Internal Formats
-		case GL_R8: return "GL_R9";
+		case GL_R8: return "GL_R8";
 		case GL_R8_SNORM: return "GL_R8_SNORM";
 		case GL_R16: return "GL_R16";
 		case GL_R16_SNORM: return "GL_R16_SNORM";
