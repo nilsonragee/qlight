@@ -92,7 +92,7 @@ void mouse_callback(GLFWwindow* window, double new_mouse_x, double new_mouse_y) 
 }
 
 void scroll_callback(GLFWwindow* window, double offset_x, double offset_y) {
-	if (!freeze_camera) {
+	if (!mouse.cursor_mode && !freeze_camera) {
 		camera_zoom( g_camera, ( f32 ) -offset_y );
 		log_info( "Camera FOV: %.f.", g_camera->fov );
 	}
@@ -287,16 +287,22 @@ void load_texture( StringView_ASCII name, StringView_ASCII file_path, Texture_Ch
 	);
 }
 
+#define LOAD_TEXTURES
+
 void load_textures() {
 //#ifdef LOAD_TEXTURES
 	load_texture( "bark_diffuse", "resources/textures/bark_diffuse_x3072_expt1-255.png", TextureChannels_RGB, GL_SRGB8 );
 	load_texture( "bark_normal", "resources/textures/bark_normal_x3072_expt1-255_gauss-bilat.png", TextureChannels_RGB, GL_RGB8 );
+
+	load_texture( "metal_plate_02_diffuse", "resources/textures/metal_plate_02_diff_4k.jpg", TextureChannels_RGB, GL_SRGB8 );
+	load_texture( "metal_plate_02_normal", "resources/textures/metal_plate_02_nor_gl_4k.jpg", TextureChannels_RGB, GL_SRGB8 );
+	load_texture( "metal_plate_02_specular", "resources/textures/metal_plate_02_rough_4k.png", TextureChannels_Red, GL_R8 );
 #ifdef LOAD_TEXTURES
 
 	load_texture( "dried-soil_diffuse", "resources/textures/dried_soil_diffuse_x3072_expt1-190.png", TextureChannels_RGB, GL_RGB8 );
 	load_texture( "dried-soil_normal", "resources/textures/dried_soil_normal_x3072_expt1-190.png", TextureChannels_RGB, GL_RGB8 );
 
-	load_texture( "rocks-medium_diffuse", "resources/textures/rocks-medium_diffuse_x3072_expt1-394_flat.png", TextureChannels_RGB, GL_RGB8 );
+	load_texture( "rocks-medium_diffuse", "resources/textures/rocks-medium_diffuse_x3072_expt1-394_flat.png", TextureChannels_RGB, GL_SRGB8 );
 	load_texture( "rocks-medium_normal", "resources/textures/rocks-medium_normal_x3072_expt1-394_flat.png", TextureChannels_RGB, GL_RGB8 );
 #endif
 }
@@ -321,7 +327,16 @@ void create_materials() {
 	shininess_exponent = 64.0f;
 	material_create( "bark", shader, diffuse, normal, specular, shininess_exponent );
 
+	diffuse = texture_find( "metal_plate_02_diffuse" );
+	normal = texture_find( "metal_plate_02_normal" );
+	specular = texture_find( "metal_plate_02_specular" );
+	Assert( diffuse != INVALID_TEXTURE_ID );
+	Assert( normal != INVALID_TEXTURE_ID );
+	Assert( specular != INVALID_TEXTURE_ID );
 //#endif
+	shininess_exponent = 64.0f;
+	material_create( "metal-plate-02", shader, diffuse, normal, specular, shininess_exponent );
+
 #ifdef LOAD_TEXTURES
 	diffuse = texture_find( "dried-soil_diffuse" );
 	normal = texture_find( "dried-soil_normal" );
@@ -329,7 +344,7 @@ void create_materials() {
 	Assert( diffuse != INVALID_TEXTURE_ID );
 	Assert( normal != INVALID_TEXTURE_ID );
 #endif
-	shininess_exponent = 0.0f;
+	shininess_exponent = 64.0f;
 	material_create( "dried-soil", shader, diffuse, normal, specular, shininess_exponent );
 
 #ifdef LOAD_TEXTURES
@@ -339,7 +354,7 @@ void create_materials() {
 	Assert( diffuse != INVALID_TEXTURE_ID );
 	Assert( normal != INVALID_TEXTURE_ID );
 #endif
-	shininess_exponent = 0.0f;
+	shininess_exponent = 64.0f;
 	material_create( "rocks-medium", shader, diffuse, normal, specular, shininess_exponent );
 }
 
@@ -453,7 +468,7 @@ imgui_entity_directional_light_fields( Entity_Directional_Light *light ) {
 	ImGui::TextDisabled( "--- Entity_Directional_Light ---" );
 	bool modified = false;
 	modified |= ImGui::ColorEdit3( "Color", &light->color[ 0 ] );
-	modified |= ImGui::DragFloat( "Intensity", &light->intensity, 0.01f, 0.0f, 100.0f, "%.2f", ImGuiSliderFlags_NoRoundToFormat);
+	modified |= ImGui::DragFloat( "Intensity", &light->intensity, 0.001f, 0.0f, 100.0f, "%.3f", ImGuiSliderFlags_NoRoundToFormat);
 	return modified;
 }
 
@@ -462,7 +477,7 @@ imgui_entity_point_light_fields( Entity_Point_Light *light ) {
 	ImGui::TextDisabled( "--- Entity_Point_Light ---" );
 	bool modified = false;
 	modified |= ImGui::ColorEdit3( "Color", &light->color[ 0 ] );
-	modified |= ImGui::DragFloat( "Intensity", &light->intensity, 0.01f, 0.0f, 100.0f, "%.2f", ImGuiSliderFlags_NoRoundToFormat);
+	modified |= ImGui::DragFloat( "Intensity", &light->intensity, 0.001f, 0.0f, 100.0f, "%.3f", ImGuiSliderFlags_NoRoundToFormat);
 	return modified;
 }
 
@@ -471,7 +486,7 @@ imgui_entity_spot_light_fields( Entity_Spot_Light *light ) {
 	ImGui::TextDisabled( "--- Entity_Spot_Light ---" );
 	bool modified = false;
 	modified |= ImGui::ColorEdit3( "Color", &light->color[ 0 ] );
-	modified |= ImGui::DragFloat( "Intensity", &light->intensity, 0.01f, 0.0f, 100.0f, "%.2f", ImGuiSliderFlags_NoRoundToFormat);
+	modified |= ImGui::DragFloat( "Intensity", &light->intensity, 0.001f, 0.0f, 100.0f, "%.3f", ImGuiSliderFlags_NoRoundToFormat);
 	return modified;
 }
 
@@ -591,7 +606,22 @@ int main()
 	Model *model_cube = model_instance( model_cube_id );
 	Mesh_ID cube_mesh_id = model_cube->meshes.data[ 0 ];
 	Mesh *cube_mesh = mesh_instance( cube_mesh_id );
-	cube_mesh->material_id = material_find( "bark" );
+	cube_mesh->material_id = material_find( "metal-plate-02" );
+	// cube_mesh->material_id = material_find( "rocks-medium" );
+
+	Model_ID model_plane_id = model_load_from_file( "plane", "resources/models/plane.obj" );
+	renderer_model_meshes_upload( model_plane_id );
+	Model *model_plane = model_instance( model_plane_id );
+	Mesh_ID plane_mesh_id = model_plane->meshes.data[ 0 ];
+	Mesh *plane_mesh = mesh_instance( plane_mesh_id );
+	plane_mesh->material_id = material_find( "metal-plate-02" );
+
+	Model_ID model_plane2_id = model_load_from_file( "plane2", "resources/models/plane.obj" );
+	renderer_model_meshes_upload( model_plane2_id );
+	Model *model_plane2 = model_instance( model_plane2_id );
+	Mesh_ID plane2_mesh_id = model_plane2->meshes.data[ 0 ];
+	Mesh *plane2_mesh = mesh_instance( plane2_mesh_id );
+	plane2_mesh->material_id = material_find( "bark" );
 
 	Map *map = map_current();
 
@@ -599,9 +629,9 @@ int main()
 		/*       name */ "Main Camera",
 		/* projection */ CameraProjection_Perspective,
 		// /*   position */ { 0.0f, 0.0f, -3.0f },
-		/*   position */ { 3.1f, 2.0f, 2.7f },
+		/*   position */ { 3.5f, 2.5f, 7.5f },
 		// /*   rotation */ quaternion_identity(),
-		/*   rotation */ Quaternion { -0.102f, 0.882f, -0.226f, -0.401f },
+		/*   rotation */ Quaternion { -0.076f, 0.920f, -0.229f, -0.309f },
 		/* ortho_size */ 5.0f,
 		// /*        fov */ 80.0f,
 		/*        fov */ 40.0f,
@@ -618,27 +648,39 @@ int main()
 		// Entity
 		entity_sunlight.type = EntityType_DirectionalLight;
 		entity_sunlight.parent = INVALID_ENTITY_ID;
-		entity_sunlight.bits = EntityBit_NoDraw;
+		entity_sunlight.bits = 0;
 		entity_sunlight.transform = transform_identity();
 		entity_sunlight.transform.position.x = 100.0f;
 		entity_sunlight.transform.position.y = 100.0f;
 		entity_sunlight.transform.position.z = 10.0f;
 		// Entity_Directional_Light
 		entity_sunlight.color = { 244 / 255.0f, 233 / 255.0f, 155 / 255.0f };
-		entity_sunlight.intensity = 1.0f;
+		entity_sunlight.intensity = 0.04f;
 		map_entity_add( map, &entity_sunlight );
 
-		Entity_Point_Light entity_point_light;
+		Entity_Point_Light entity_point_light1;
 		// Entity
-		entity_point_light.type = EntityType_PointLight;
-		entity_point_light.parent = INVALID_ENTITY_ID;
-		entity_point_light.bits = EntityBit_NoDraw;
-		entity_point_light.transform = transform_identity();
-		entity_point_light.transform.position.y = 10.0f;
+		entity_point_light1.type = EntityType_PointLight;
+		entity_point_light1.parent = INVALID_ENTITY_ID;
+		entity_point_light1.bits = 0;
+		entity_point_light1.transform = transform_identity();
+		entity_point_light1.transform.position = { -0.5f, 0.5f, 3.5f };
 		// Entity_Point_Light
-		entity_point_light.color = { 0, 0, 1 };
-		entity_point_light.intensity = 1.0f;
-		map_entity_add( map, &entity_point_light );
+		entity_point_light1.color = { 244 / 255.0f, 233 / 255.0f, 155 / 255.0f };
+		entity_point_light1.intensity = 1.0f;
+		map_entity_add( map, &entity_point_light1 );
+
+		Entity_Point_Light entity_point_light2;
+		// Entity
+		entity_point_light2.type = EntityType_PointLight;
+		entity_point_light2.parent = INVALID_ENTITY_ID;
+		entity_point_light2.bits = 0;
+		entity_point_light2.transform = transform_identity();
+		entity_point_light2.transform.position = { 0.8f, -0.3f, 4.0f };
+		// Entity_Point_Light
+		entity_point_light2.color = { 130 / 255.0f, 137 / 255.0f, 255 / 255.0f };
+		entity_point_light2.intensity = 1.0f;
+		map_entity_add( map, &entity_point_light2 );
 
 		Entity_Camera entity_camera;
 		// Entity
@@ -669,9 +711,56 @@ int main()
 		entity_cube.transform = transform_identity();
 		// Entity_Static_Object
 		entity_cube.model = model_cube_id;
-		// entity_cube.transform.position += { 1, 0, 0 };
-		// transform_set_dirty( &entity_cube.transform, true );
+		// entity_cube.transform.position = { 0, 0, 0 };
 		map_entity_add( map, &entity_cube );
+
+		Entity_Static_Object entity_plane1;
+		// Entity
+		entity_plane1.type = EntityType_StaticObject;
+		entity_plane1.parent = INVALID_ENTITY_ID;
+		entity_plane1.bits = 0;
+		entity_plane1.transform = transform_identity();
+		// Entity_Static_Object
+		entity_plane1.model = model_plane_id;
+		entity_plane1.transform.position = { 0, -1, 4 };
+		map_entity_add( map, &entity_plane1 );
+
+		Entity_Static_Object entity_plane2;
+		// Entity
+		entity_plane2.type = EntityType_StaticObject;
+		entity_plane2.parent = INVALID_ENTITY_ID;
+		entity_plane2.bits = 0;
+		entity_plane2.transform = transform_identity();
+		// Entity_Static_Object
+		entity_plane2.model = model_plane_id;
+		entity_plane2.transform.rotation = { 0, 0, -0.7071068f, 0.7071068f }; // -90 degrees around { 0, 0, 1 } axis
+		entity_plane2.transform.position = { -1, 0, 4 };
+		map_entity_add( map, &entity_plane2 );
+
+		Entity_Static_Object entity_cube2;
+		// Entity
+		entity_cube2.type = EntityType_StaticObject;
+		entity_cube2.parent = INVALID_ENTITY_ID;
+		entity_cube2.bits = 0;
+		entity_cube2.transform = transform_identity();
+		// Entity_Static_Object
+		entity_cube2.model = model_cube_id;
+		entity_cube2.transform.scale = { 0.2f, 0.2f, 0.2f };
+		entity_cube2.transform.position = { 0, -0.5f, 3.5f };
+		map_entity_add( map, &entity_cube2 );
+
+		Entity_Static_Object entity_cube3;
+		// Entity
+		entity_cube3.type = EntityType_StaticObject;
+		entity_cube3.parent = INVALID_ENTITY_ID;
+		entity_cube3.bits = 0;
+		entity_cube3.transform = transform_identity();
+		// Entity_Static_Object
+		entity_cube3.model = model_cube_id;
+		entity_cube3.transform.scale = { 0.2f, 0.2f, 0.2f };
+		entity_cube3.transform.rotation = { 0.3826834f, 0, 0, 0.9238795f }; // 45 degrees around { 1, 0, 0 } axis
+		entity_cube3.transform.position = { 0.5f, -0.5f, 4.5f };
+		map_entity_add( map, &entity_cube3 );
 	}
 
 	glViewport(
@@ -773,8 +862,8 @@ int main()
 
 		if (imgui_draw_edit_window) {
 
-			ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
-			ImGui::SetNextWindowCollapsed(false, ImGuiCond_FirstUseEver);
+			ImGui::SetNextWindowPos( ImVec2( 0, 0 ), ImGuiCond_FirstUseEver );
+			ImGui::SetNextWindowCollapsed( false, ImGuiCond_FirstUseEver );
 			if (ImGui::Begin("Scene")) {
 				ImGui::Checkbox("Show demo window", &imgui_draw_demo_window);
 
@@ -828,6 +917,9 @@ int main()
 
 				f32 frame_time = renderer_frame_time_delta();
 
+				Vector3_f32 *ambient_light = renderer_get_ambient_light_pointer();
+				ImGui::ColorEdit3("Ambient light", &ambient_light->x);
+
 				static const char *g_render_outputs[] = { "Final Color", "Position", "Normal", "Diffuse & Specular" };
 				static int g_selected_render_output = 0;
 				if ( ImGui::Combo( "Render Output", &g_selected_render_output, g_render_outputs, ARRAY_SIZE( g_render_outputs ) ) ) {
@@ -862,6 +954,7 @@ int main()
 		}
 
 		if ( imgui_draw_entities_window ) {
+			ImGui::SetNextWindowCollapsed( true, ImGuiCond_FirstUseEver );
 			if ( ImGui::Begin( "Entities", NULL, ImGuiWindowFlags_AlwaysAutoResize ) ) {
 				ForIt( map->entity_table.entities.data, map->entity_table.entities.size ) {
 					if ( it == NULL )
@@ -903,6 +996,7 @@ int main()
 			static f32 imgui_textures_preview_size_min = 128.0f;
 			static f32 imgui_textures_preview_size_max = 512.0f;
 			static bool imgui_textures_correct_aspect_ratio = true;
+			ImGui::SetNextWindowCollapsed( true, ImGuiCond_FirstUseEver );
 			if ( ImGui::Begin( "Textures", NULL, ImGuiWindowFlags_AlwaysAutoResize ) ) {
 				ImGui::DragFloat( "Min Preview size", &imgui_textures_preview_size_min, 2.0f, 8.0f, imgui_textures_preview_size_max, "%.f" );
 				ImGui::DragFloat( "Max Preview size", &imgui_textures_preview_size_max, 2.0f, imgui_textures_preview_size_min, 8192.0f, "%.f" );
@@ -916,7 +1010,9 @@ int main()
 					if ( ImGui::TreeNode( (void*)(intptr_t)it_index, "%hu: " StringViewFormat, texture_id, StringViewArgument( it.name ) ) ) {
 						// `ImTextureID` is a user-defined type which default to `void *`.
 						// In ImGui's OpenGL implementation (imgui_impl_opengl3), it is expected to be
-						// an OpenGL texture ID with the type of `GLuint`.
+						//   an OpenGL texture ID with the type of `GLuint`.
+						// More about this and ImGui::Image() at:
+						//   `https://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples`
 						ImTextureID texture_id = ( ImTextureID )it.opengl_id;
 						f32 width = ( f32 )it.dimensions.width;
 						f32 height = ( f32 )it.dimensions.height;
@@ -927,12 +1023,19 @@ int main()
 							final_width *= aspect_ratio;
 
 						ImVec2 dimensions = ImVec2( final_width, final_height );
-						// UV's Y is reversed so the texture's orientation is not upside down.
-						ImVec2 uv_min = ImVec2( 0.0f, 1.0f );
-						ImVec2 uv_max = ImVec2( 1.0f, 0.0f );
-						ImVec4 tint_color = ImVec4( 1.0f, 1.0f, 1.0f, 1.0f );  // No tint.
-						ImVec4 border_color = ImVec4( 1.0f, 1.0f, 1.0f, 0.5f );  // 50%-opaque white border.
-						ImGui::TextUnformatted( "Preview:" );
+						// Reverse the UV's Y coordinate so the texture's orientation is not upside down.
+						ImVec2 uv_min = ImVec2( 0, 1 );
+						ImVec2 uv_max = ImVec2( 1, 0 );
+						ImVec4 tint_color = ImVec4( 1, 1, 1, 1 );  // No tint, colors are as-is.
+						u8 channels_count = texture_channels_count( it.channels );
+						if ( channels_count == 1 ) {
+							// Display single channel texture in grayscale somehow? Either:
+							// 1. Fill the rest of the texture channels with that value;
+							// 2. Attach a custom shader to ImGui with `frag_color = vec4( r, r, r, 1.0 );`.
+						}
+
+						ImVec4 border_color = ImVec4( 1, 1, 1, 0.5f );  // 50%-opaque white border.
+						ImGui::Text( "Preview: %.fx%.f", final_width, final_height );
 						ImGui::Image( texture_id, dimensions, uv_min, uv_max, tint_color, border_color );
 						ImGui::Text( "File: \"" StringViewFormat "\"", StringViewArgument( it.file_path ) );
 						ImGui::Text( "Dimensions: %hux%hu", it.dimensions.width, it.dimensions.height );
@@ -960,6 +1063,7 @@ int main()
 		}
 
 		if ( imgui_draw_materials_window ) {
+			ImGui::SetNextWindowCollapsed( true, ImGuiCond_FirstUseEver );
 			if ( ImGui::Begin( "Materials", NULL, ImGuiWindowFlags_AlwaysAutoResize ) ) {
 				ArrayView< Material > materials = materials_get_storage_view();
 				ForIt( materials.data, materials.size ) {

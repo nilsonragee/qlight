@@ -49,7 +49,8 @@ Matrix3x3_f32 quaternion_to_rotation_matrix( Quaternion q );
 Matrix4x4_f32 transform_matrix_scale( Matrix4x4_f32 *model, Vector3_f32 scale );
 Matrix4x4_f32 transform_matrix_rotate_matrix( Matrix4x4_f32 *model, Matrix3x3_f32 *rotation );
 Matrix4x4_f32 transform_matrix_rotate_quaternion( Matrix4x4_f32 *model, Quaternion rotation );
-Matrix4x4_f32 transform_matrix_translate( Matrix4x4_f32 *model, Vector3_f32 position );
+Matrix4x4_f32 transform_matrix_translate_local_directions( Matrix4x4_f32 *model, Vector3_f32 position );
+Matrix4x4_f32 transform_matrix_translate_world_directions( Matrix4x4_f32 *model, Vector3_f32 position );
 
 Quaternion yxz_euler_to_quaternion_rotation( Vector3_f32 yxz_euler );
 inline Quaternion yxz_euler_degrees_to_quaternion_rotation( Vector3_f32 yxz_euler ) {

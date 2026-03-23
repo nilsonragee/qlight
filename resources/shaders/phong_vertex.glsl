@@ -17,17 +17,20 @@
 	};
 */
 
-layout (location = 0) in vec2 in_texture_uv;  // Vertex texture UV
+layout ( location = 0 ) in vec2 in_texture_uv;  // Vertex texture UV
 
 // These are passed to fragment shader inputs.
 // Variable names must be the same in both shaders.
+// In the case of structured output (like `Vertex_Out`), the same structure name must be used.
 // NOTE: Values get interpolated using barycentric coordinates for triangles (triangle-space coordinates)
 // on Rasterization stage (after Vertex shader, before Fragment shader; fixed function, non-programmable).
-out vec2 fragment_texture_uv;  // Fragment interpolated texture UV (no transformations needed)
+layout ( location = 0 ) out Vertex_Out {
+	vec2 texture_uv;  // Fragment interpolated texture UV
+} vertex_out;
 
 void main()
 {
-	fragment_texture_uv = in_texture_uv;
+	vertex_out.texture_uv = in_texture_uv;
 
 	vec2 ndc_position = ( in_texture_uv - 0.5 ) * 2; // [0; 1] -> [-1; 1]
 	gl_Position = vec4( ndc_position, 0.0, 1.0 );

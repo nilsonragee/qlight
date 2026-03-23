@@ -640,6 +640,9 @@ renderer_set_camera_position_pointer( Vector3_f32 *camera_position );
 void
 renderer_set_ambient_light_color( Vector3_f32 ambient_light );
 
+Vector3_f32 *
+renderer_get_ambient_light_pointer();
+
 StringView_ASCII
 renderer_framebuffer_attachment_point_name( Renderer_Framebuffer_Attachment_Point attachment_point );
 

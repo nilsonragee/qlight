@@ -943,7 +943,7 @@ renderer_init() {
 	g_renderer.camera_position = NULL;
 	g_renderer.view_matrix = NULL;
 	g_renderer.projection_matrix = NULL;
-	g_renderer.ambient_light = Vector3_f32 { 0.1f, 0.1f, 0.1f };
+	g_renderer.ambient_light = Vector3_f32 { 0, 0, 0 };
 
 	g_renderer.render_queue = array_new< Renderer_Render_Command >( sys_allocator, 32 );
 	g_renderer.render_queue_material_sequence = array_new< u16 >( sys_allocator, 32 );
@@ -2511,6 +2511,11 @@ renderer_set_camera_position_pointer( Vector3_f32 *camera_position ) {
 void
 renderer_set_ambient_light_color( Vector3_f32 ambient_light ) {
 	g_renderer.ambient_light = ambient_light;
+}
+
+Vector3_f32 *
+renderer_get_ambient_light_pointer() {
+	return &g_renderer.ambient_light;
 }
 
 StringView_ASCII

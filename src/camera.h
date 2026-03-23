@@ -82,14 +82,24 @@ inline void camera_set_rotation_yxz_euler_degrees( Camera *camera, Vector3_f32 y
 void camera_rotate_by_quaternion_local_space( Camera *camera, Quaternion quaternion );
 void camera_rotate_by_quaternion_global_space( Camera *camera, Quaternion quaternion );
 
-void camera_rotate_by_quaternion( Camera *camera, Quaternion quaternion );
-inline void camera_rotate_by_yxz_euler( Camera *camera, Vector3_f32 yxz_euler ) {
+inline void camera_rotate_by_yxz_euler_local_space( Camera *camera, Vector3_f32 yxz_euler ) {
 	Quaternion rotation = yxz_euler_to_quaternion_rotation( yxz_euler );
-	camera_rotate_by_quaternion( camera, rotation );
+	camera_rotate_by_quaternion_local_space( camera, rotation );
 }
-inline void camera_rotate_by_yxz_euler_degrees( Camera *camera, Vector3_f32 yxz_euler ) {
+
+inline void camera_rotate_by_yxz_euler_global_space( Camera *camera, Vector3_f32 yxz_euler ) {
+	Quaternion rotation = yxz_euler_to_quaternion_rotation( yxz_euler );
+	camera_rotate_by_quaternion_global_space( camera, rotation );
+}
+
+inline void camera_rotate_by_yxz_euler_degrees_local_space( Camera *camera, Vector3_f32 yxz_euler ) {
 	Quaternion rotation = yxz_euler_degrees_to_quaternion_rotation( yxz_euler );
-	camera_rotate_by_quaternion( camera, rotation );
+	camera_rotate_by_quaternion_local_space( camera, rotation );
+};
+
+inline void camera_rotate_by_yxz_euler_degrees_global_space( Camera *camera, Vector3_f32 yxz_euler ) {
+	Quaternion rotation = yxz_euler_degrees_to_quaternion_rotation( yxz_euler );
+	camera_rotate_by_quaternion_global_space( camera, rotation );
 };
 
 void camera_set_position( Camera *camera, Vector3_f32 position );

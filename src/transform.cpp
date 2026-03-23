@@ -50,7 +50,7 @@ void transform_recalculate_matrices( Transform *transform ) {
 	*/
 
 	place_matrix3x3_into_matrix4x4( &rotation_scale, &transform->model_matrix );
-	transform->model_matrix = transform_matrix_translate( &transform->model_matrix, transform->position );
+	transform->model_matrix = transform_matrix_translate_world_directions( &transform->model_matrix, transform->position );
 
 	/*
 	Matrix3x3_f32 normal_matrix;
@@ -160,7 +160,7 @@ Matrix4x4_f32 transform_matrix_rotate_quaternion( Matrix4x4_f32 *model, Quaterni
 	return result;
 }
 
-Matrix4x4_f32 transform_matrix_translate( Matrix4x4_f32 *model, Vector3_f32 position ) {
+Matrix4x4_f32 transform_matrix_translate_local_directions( Matrix4x4_f32 *model, Vector3_f32 position ) {
 	Matrix4x4_f32 result = Matrix4x4_f32( 1.0f );
 
 	Vector4_f32 direction_X = (*model)[ 0 ];
@@ -177,6 +177,31 @@ Matrix4x4_f32 transform_matrix_translate( Matrix4x4_f32 *model, Vector3_f32 posi
 		direction_Y * position.y  +
 		direction_Z * position.z;
 	result[ 3 ].w = 1.0f;
+
+	return result;
+}
+
+Matrix4x4_f32 transform_matrix_translate_world_directions( Matrix4x4_f32 *model, Vector3_f32 position ) {
+	Matrix4x4_f32 result = Matrix4x4_f32( 1.0f );
+
+	Vector4_f32 direction_X = (*model)[ 0 ];
+	Vector4_f32 direction_Y = (*model)[ 1 ];
+	Vector4_f32 direction_Z = (*model)[ 2 ];
+	Vector4_f32 model_position = (*model)[ 3 ];
+
+	result[ 0 ] = direction_X;
+	result[ 1 ] = direction_Y;
+	result[ 2 ] = direction_Z;
+
+	Vector3_f32 RIGHT   = WORLD_DIRECTION_RIGHT;
+	Vector3_f32 UP      = WORLD_DIRECTION_UP;
+	Vector3_f32 FORWARD = WORLD_DIRECTION_FORWARD;
+	Vector3_f32 global_position =
+		RIGHT   * position.x  +
+		UP      * position.y  +
+		FORWARD * position.z;
+	result[ 3 ] = Vector4_f32 { global_position.x, global_position.y, global_position.z, 1.0f };
+	// result[ 3 ].w = 1.0f;
 
 	return result;
 }

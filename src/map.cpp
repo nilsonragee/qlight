@@ -104,7 +104,8 @@ lights_manager_update() {
 	Uniform_Buffer_Lights *uniform_data = ( Uniform_Buffer_Lights * )lights->mapping.view.data;
 	Uniform_Buffer_Struct_Light *data_lights = ( Uniform_Buffer_Struct_Light * )lights->mapping.view.data;
 	ForIt( directional_lights.data, directional_lights.size ) {
-		u32 light_idx = lights->current_slot + it_index;
+		if ( it.bits & EntityBit_NoDraw )
+			continue;
 
 		Vector4_f32 color = { it.color.r, it.color.g, it.color.b, it.intensity };
 		Vector3_f32 *t_pos = &it.transform.position;
@@ -115,13 +116,14 @@ lights_manager_update() {
 			.color = color
 			// ._padding0 = { 0 }
 		};
-		data_lights[ light_idx ] = uniform_light;
+		data_lights[ lights->current_slot ] = uniform_light;
 		lights->current_slot += 1;
 		lights->lights_count += 1;
 	}}
 
 	ForIt( point_lights.data, point_lights.size ) {
-		u32 light_idx = lights->current_slot + it_index;
+		if ( it.bits & EntityBit_NoDraw )
+			continue;
 
 		Vector4_f32 color = { it.color.r, it.color.g, it.color.b, it.intensity };
 		Vector3_f32 *t_pos = &it.transform.position;
@@ -132,13 +134,14 @@ lights_manager_update() {
 			.color = color
 			// ._padding0 = { 0 }
 		};
-		data_lights[ light_idx ] = uniform_light;
+		data_lights[ lights->current_slot ] = uniform_light;
 		lights->current_slot += 1;
 		lights->lights_count += 1;
 	}}
 
 	ForIt( spot_lights.data, spot_lights.size ) {
-		u32 light_idx = lights->current_slot + it_index;
+		if ( it.bits & EntityBit_NoDraw )
+			continue;
 
 		Vector4_f32 color = { it.color.r, it.color.g, it.color.b, it.intensity };
 		Vector3_f32 *t_pos = &it.transform.position;
@@ -149,7 +152,7 @@ lights_manager_update() {
 			.color = color
 			// ._padding0 = { 0 }
 		};
-		data_lights[ light_idx ] = uniform_light;
+		data_lights[ lights->current_slot ] = uniform_light;
 		lights->current_slot += 1;
 		lights->lights_count += 1;
 	}}
