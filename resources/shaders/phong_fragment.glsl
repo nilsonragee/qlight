@@ -2,23 +2,43 @@
 /*
     GLSL built-in fragment shader variables:
 
-    in   vec4 gl_FragCoord;
-    in   bool gl_FrontFacing;
-    in   vec2 gl_PointCoord;
+    // --- Input ---
 
-    in    int gl_SampleID;        // OpenGL 4.0+
-    in   vec2 gl_SamplePosition;  // OpenGL 4.0+
-    in    int gl_SampleMaskIn[];  // OpenGL 4.0+
+	// Basic inputs (always available)
+	in  vec4  gl_FragCoord;       // fragment window coordinates
+	in  bool  gl_FrontFacing;     // whether the fragment belongs to a front-facing primitive
+	in  vec2  gl_PointCoord;      // fragment coordinates within a point (0-1 range)
 
-    in  float gl_ClipDistance[];  // OpenGL 4.0+ (?), User-controllable
-    in    int gl_PrimitiveID;     // OpenGL 4.0+ (?), User-controllable
+	// Geometry/Tessellation stage outputs (GLSL 4.00+)
+	in  int   gl_PrimitiveID;     // primitive index
+	in  int   gl_SampleID;        // sample index for multisample fragments
+	in  vec2  gl_SamplePosition;  // sample position within the pixel
+	in  int   gl_SampleMaskIn[];  // sample coverage mask input
+	in  float gl_ClipDistance[];  // user-defined clip distances
+	in  float gl_CullDistance[];  // user-defined cull distances (GLSL 4.50+)
 
-    in    int gl_Layer;           // OpenGL 4.3+
-    in    int gl_ViewportIndex;   // OpenGL 4.3+
+	// Layered rendering inputs (GLSL 4.30+)
+	in  int   gl_Layer;           // layer in framebuffer array
+	in  int   gl_ViewportIndex;   // viewport index
 
+	// Geometry shader primitive inputs (GLSL 4.60+)
+	in  int   gl_PrimitiveIDIn;   // original primitive ID from geometry shader
 
-    out float gl_FragDepth;
-    out   int gl_SampleMask[];    // GLSL 4.00+ or ARB_sample_shading
+	// --- Output ---
+
+	// Depth output
+	out  float gl_FragDepth;      // fragment depth value
+	out  float gl_FragDepthEXT;   // alternative depth output (EXT_frag_depth)
+
+	// Sample masking (GLSL 4.00+)
+	out  int   gl_SampleMask[];   // sample coverage mask output
+
+	// Stencil output (GLSL 4.60+)
+	out  uint  gl_FragStencilRefARB; // stencil reference value (ARB_shader_stencil_export)
+
+	// Multiple render target outputs
+	out  vec4  gl_FragColor;      // deprecated in core profile
+	out  vec4  gl_FragData[];     // deprecated in core profile
 */
 
 #define PI 3.141592653589793
