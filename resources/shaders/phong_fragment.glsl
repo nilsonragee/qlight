@@ -279,11 +279,10 @@ float PhongSpecular( vec3 N, vec3 V, vec3 L, float shininess_exponent ) {
 
 // Blinn-Phong Specular - computationally faster than Phong because of the single vec3 addition instead of `reflect` function.
 // Gives a softer highlight for the same shininess exponent as in Phong.
-// While the Blinn-Phong equation provides light stretching, one could then think it handles anosotropic materials -
+// While the Blinn-Phong equation provides light stretching, one could then think it handles anisotropic materials -
 //   materials which properties are direction-dependent, - but that is not actually true.  It is simply an artifact,
 //   not an intended behavior as it is physically wrong.  For a correct result, the stretching should then happen
-//   along the surface grain directions (tangent/binormal), not the view angle.
-// While the Blinn-Phong equation provides light stretching, one could then think it handles anosotropic materials -
+//   along the surface's grain directions (tangent/binormal), not the view angle.
 // N - surface Normal direction vector, normalized.
 // V - View direction vector, normalized.
 // L - Light direction vector, normalized.
@@ -315,9 +314,9 @@ void main()
 	vec3 final_color = ambient_light;
 
 	for ( int i = 0; i < ubo_lights.lights_count; i += 1 ) {
-		vec3 light_position = ubo_lights.lights[ i ].position.xyz;
-		float w = ubo_lights.lights[ i ].position.w;
-		vec3 light_color = ubo_lights.lights[ i ].color.rgb;
+		vec3  light_position  = ubo_lights.lights[ i ].position.xyz;
+		float w               = ubo_lights.lights[ i ].position.w;
+		vec3  light_color     = ubo_lights.lights[ i ].color.rgb;
 		float light_intensity = ubo_lights.lights[ i ].color.a;
 
 		// TODO: Replace if-branching with Vector4 multiplication
