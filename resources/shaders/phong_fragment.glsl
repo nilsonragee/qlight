@@ -239,11 +239,13 @@ void main()
 {
 	// Sample fragment data from G-Buffer textures.
 	vec3 position  = texture( gbuffer_position,         fragment_in.texture_uv ).rgb; // 3D XYZ point
-	vec3 normal    = texture( gbuffer_normal,           fragment_in.texture_uv ).rgb; // 3D XYZ vector direction
+	//   N - (N)ormal direction vector.
+	vec3 N         = texture( gbuffer_normal,           fragment_in.texture_uv ).rgb; // 3D XYZ Normal direction vector
 	vec3 diffuse   = texture( gbuffer_diffuse_specular, fragment_in.texture_uv ).rgb; // RGB color
 	float specular = texture( gbuffer_diffuse_specular, fragment_in.texture_uv ).a;   // Specular highlight intensity
 
-	vec3 view_direction = normalize( view_position - position );
+	//   V - (V)iew direction vector.
+	vec3 V = normalize( view_position - position );
 
 	/* Ambient light */
 
@@ -257,24 +259,30 @@ void main()
 		float light_intensity = ubo_lights.lights[ i ].color.a;
 
 		// TODO: Replace if-branching with Vector4 multiplication
-		vec3 light_direction = normalize( light_position - position );
-		float distance_to_light_source = length( light_position - /* fragment */ position );
-		if ( w != 1.0 ) {
-			light_direction = normalize( light_position );
-			distance_to_light_source = 1.0;
-		}
+		// vec3 L;  // Light direction vector, normalized.
+		// float light_distance;  // Distance from the fragment to a light source.
+		// if ( w == 1.0 ) {  // .w = 1  =>  Positional light
+		// 	L = normalize( light_position - position );
+		// 	light_distance = length( light_position - position );
+		// } else {  // .w = 0  => Directional light
+		// 	L = normalize( light_position );
+		// 	light_distance = 1.0;  // Directional light illumination (e.g. sunlight) does not fall off over distance.
+		// }
+
+		vec3 L = normalize( mix( light_position, light_position - position, w ) );
+		float light_distance = mix( 1.0, length( light_position - position ), w );
 
 		// `1 / ( distance^2 )` is a close approximation of how a physical light behaves in a real world.
 		// If the light's brightness is seen to be too intense, then the lighting calculations are probably done
-		// in non-linear sRGB color space - with the 2.2 gamma pre-multiplication - instead of linear space.
+		// in non-linear sRGB color space - with the sRGB gamma curve (~2.2) pre-multiplication - instead of linear space.
 		// It can be fixed using linear interpolation function instead: `1 / ( distance )`.
 		// It makes things work, but should not be really used, as working in an sRGB space is a fundamental mistake.
 		//
 		// In the case of:
 		// Positional  light:  `= 1.0 / ( distance^2 )`
 		// Directional light:  `= 1.0 / ( 1.0^2 ) = 1.0 / 1.0 = 1.0`
-		float attenuation = 1.0 / ( distance_to_light_source * distance_to_light_source );  // Quadratic, physically accurate
-		// float attenuation = 1.0 / ( distance_to_light_source );  // Linear, kinda works for incorrect calculations in sRGB
+		float attenuation = 1.0 / ( light_distance * light_distance );  // Quadratic, physically accurate
+		// float attenuation = 1.0 / ( light_distance );  // Linear, kinda works for incorrect calculations in non-linear sRGB
 
 		/* Diffuse light */
 
@@ -291,8 +299,9 @@ void main()
 
 		// Phong - slower, sharper highlight
 		// if ( shininess_exponent > 0.0 ) {
-		// 	vec3 reflection_direction = reflect( -light_direction, normal );
-		// 	float specular_term = pow( max( dot( view_direction, reflection_direction ), 0.0 ), shininess_exponent );
+		//       R - (R)eflection of (L)ight direction vector around (N)ormal vector axis.
+		// 	vec3 R = reflect( -L, N );
+		// 	float specular_term = pow( max( dot( V, R ), 0.0 ), shininess_exponent );
 		//
 		// 	vec3 specular_highlight = specular * specular_term * light_color;
 		// 	final_color += specular_highlight * light_intensity;
@@ -301,8 +310,9 @@ void main()
 		// Blinn-Phong - faster, softer highlight
 		// Ensure `shininess_exponent > 0.0` on CPU-side so there is no need for if-branching on GPU.
 		// if ( shininess_exponent > 0.0 ) {
-			vec3 halfway_direction = normalize( light_direction + view_direction );
-			float specular_term = pow( max( dot( normal, halfway_direction ), 0.0 ), shininess_exponent );
+			//   H - (H)alfway direction vector of (L)ight and (V)iew.
+			vec3 H = normalize( L + V );
+			float specular_term = pow( max( dot( N, H ), 0.0 ), shininess_exponent );
 
 			vec3 specular_highlight = specular * specular_term * light_color;
 			final_color += specular_highlight * light_intensity * attenuation;
