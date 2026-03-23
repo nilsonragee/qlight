@@ -86,15 +86,16 @@ IF %build_debug%==1 (
 		)
 	)
 
-	echo Step 2: Copying resource files into build folder:
+	REM Do not copy files on Debug build, use project folder as a working directory.
+	REM echo Step 2: Copying resource files into build folder:
 
 	REM robocopy - a built-in Robust File Copy for Windows tool (apparently, it's been there since Windows Vista).
 	REM /MIR - MIRror a directory tree: copy subdirectories, including empty ones
 	REM            and delete destination files/directories that no longer exist in source.
 	REM /NJH - No Job Header.
 	REM /NJS - NO Job Summary.
-	robocopy resources build\vs2019_qlight_Debug_x64\resources\ /MIR /NJH /NJS
-	robocopy "%ASSIMP_PATH%"\bin\x64\ build\vs2019_qlight_Debug_x64\ assimp-vc143-mt.dll /NJH /NJS
+	REM robocopy resources build\vs2026_qlight_Debug_x64\resources\ /MIR /NJH /NJS
+	REM robocopy "%ASSIMP_PATH%"\bin\x64\ build\vs2026_qlight_Debug_x64\ assimp-vc143-mt.dll /NJH /NJS
 
 )
 
@@ -126,8 +127,8 @@ IF %build_release%==1 (
 	REM            and delete destination files/directories that no longer exist in source.
 	REM /NJH - No Job Header.
 	REM /NJS - NO Job Summary.
-	robocopy resources build\vs2019_qlight_Release_x64\resources\ /MIR /NJH /NJS
-	robocopy "%ASSIMP_PATH%"\bin\x64\ build\vs2019_qlight_Release_x64\ assimp-vc143-mt.dll /NJH /NJS
+	robocopy resources build\vs2026_qlight_Release_x64\resources\ /MIR /NJH /NJS
+	robocopy "%ASSIMP_PATH%"\bin\x64\ build\vs2026_qlight_Release_x64\ assimp-vc143-mt.dll /NJH /NJS
 
 )
 
