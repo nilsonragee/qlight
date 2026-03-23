@@ -235,6 +235,48 @@ float LambertianDiffuse( vec3 N, vec3 L ) {
 	return max( 0.0, N_dot_L );
 }
 
+// Phong Specular - computationally slower than Blinn-Phong because of the `reflect` function.
+// Gives a sharper highlight for the same shininess exponent as in Blinn-Phong.
+// Phong equation coincidentally gives somewhat physically accurate specular highlight for isotropic materials -
+//   materials which properties are direction-independent: the highlight does not get stretched with grazing angles.
+//   Still, Phong lacks energy conservation and realistic grazing falloff to be physically correct.
+// N - surface Normal direction vector, normalized.
+// V - View direction vector, normalized.
+// L - Light direction vector, normalized.
+// shininess_exponent - lower -> softer, more spread across the surface; higher -> sharper, less spread, more glassy.
+float PhongSpecular( vec3 N, vec3 V, vec3 L, float shininess_exponent ) {
+	// `reflect( I, N )` calculates the reflection direction for an (I)ncident vector around (N)ormal
+	//   with the formula of: `I - 2.0 * dot( N, I ) * N`
+	// `reflect` also expects (I)ncident vector to point *towards* the surface, not away from it.
+	// That is why the (I)ncident/(L)ight vector is negated - to point in opposite of the original direction.
+	//   R - (R)eflection of (L)ight direction vector around (N)ormal vector axis.
+	vec3 R = reflect( -L, N );
+	float V_dot_R = dot( V, R );  // How much does (V)iew direction vector coincide with (R)eflected light vector.
+	// `V_dot_R < 0.0` means Light is coming from the back of the surface.
+	// To prevent this, we clamp the lower bound to 0.0 so the fragment does not get lit.
+	return pow( max( 0.0, V_dot_R ), shininess_exponent );
+}
+
+// Blinn-Phong Specular - computationally faster than Phong because of the single vec3 addition instead of `reflect` function.
+// Gives a softer highlight for the same shininess exponent as in Phong.
+// While the Blinn-Phong equation provides light stretching, one could then think it handles anosotropic materials -
+//   materials which properties are direction-dependent, - but that is not actually true.  It is simply an artifact,
+//   not an intended behavior as it is physically wrong.  For a correct result, the stretching should then happen
+//   along the surface grain directions (tangent/binormal), not the view angle.
+// While the Blinn-Phong equation provides light stretching, one could then think it handles anosotropic materials -
+// N - surface Normal direction vector, normalized.
+// V - View direction vector, normalized.
+// L - Light direction vector, normalized.
+// shininess_exponent - lower -> softer, more spread across the surface; higher -> sharper, less spread, more glassy.
+float BlinnPhongSpecular( vec3 N, vec3 V, vec3 L, float shininess_exponent ) {
+	//   H - (H)alfway direction vector of (L)ight and (V)iew.
+	vec3 H = normalize( L + V );
+	float N_dot_H = dot( N, H );  // How much does (N)ormal direction vector coincide with (H)alfway vector.
+	// `V_dot_H < 0.0` means Light is coming from the back of the surface.
+	// To prevent this, we clamp the lower bound to 0.0 so the fragment does not get lit.
+	return pow( max( 0.0, N_dot_H ), shininess_exponent );
+}
+
 void main()
 {
 	// Sample fragment data from G-Buffer textures.
@@ -289,34 +331,20 @@ void main()
 		// Convert Specular value to Roughness.
 		// They both describe the same physical property, just from different ends, so we can simply invert the value.
 		float roughness = 1.0 - specular;
-		float diffuse_term = OrenNayarDiffuse( normal, view_direction, light_direction, roughness );
-		// float diffuse_term = LambertianDiffuse( normal, light_direction );
+		float diffuse_term = OrenNayarDiffuse( N, V, L, roughness );
+		// float diffuse_term = LambertianDiffuse( N, L );
 
 		vec3 diffuse_light = diffuse_term * diffuse * light_color;
 		final_color += diffuse_light * light_intensity * attenuation;
 
 		/* Specular highlight */
 
-		// Phong - slower, sharper highlight
-		// if ( shininess_exponent > 0.0 ) {
-		//       R - (R)eflection of (L)ight direction vector around (N)ormal vector axis.
-		// 	vec3 R = reflect( -L, N );
-		// 	float specular_term = pow( max( dot( V, R ), 0.0 ), shininess_exponent );
-		//
-		// 	vec3 specular_highlight = specular * specular_term * light_color;
-		// 	final_color += specular_highlight * light_intensity;
-		// }
+		// `shininess_exponent` uniform is expected to be at least >= 0!
+		// Either way, the minimal acceptable value is ~8 for Phong and ~16 for Blinn-Phong speculars.
+		float specular_term = PhongSpecular( N, V, L, shininess_exponent );
 
-		// Blinn-Phong - faster, softer highlight
-		// Ensure `shininess_exponent > 0.0` on CPU-side so there is no need for if-branching on GPU.
-		// if ( shininess_exponent > 0.0 ) {
-			//   H - (H)alfway direction vector of (L)ight and (V)iew.
-			vec3 H = normalize( L + V );
-			float specular_term = pow( max( dot( N, H ), 0.0 ), shininess_exponent );
-
-			vec3 specular_highlight = specular * specular_term * light_color;
-			final_color += specular_highlight * light_intensity * attenuation;
-		// }
+		vec3 specular_highlight = specular * specular_term * light_color;
+		final_color += specular_highlight * light_intensity * attenuation;
 	}
 
 	// TODO: Do it in a separate post-processing pass.
