@@ -21,6 +21,12 @@
     out   int gl_SampleMask[];    // GLSL 4.00+ or ARB_sample_shading
 */
 
+#define PI 3.141592653589793
+// PI * 2.0
+#define TWO_PI 6.283185307179586
+// PI / 2.0
+#define PI_OVER_TWO 1.5707963267948966
+
 // Inputs from the vertex shader.
 // Variable names must match the ones declared in vertex shader outputs.
 // In the case of structured output (like `Vertex_Out`), the same structure name must be used.
@@ -131,6 +137,73 @@ vec3 LinearToSRGB( vec3 linear ) {
     return mix( low, high, cutoff );
 }
 
+#define OREN_NAYAR_TRIGONOMETRIC 0
+
+// Oren-Nayar shading model / BRDF
+// N - surface Normal direction vector, normalized.
+// V - View direction vector, normalized.
+// L - Light direction vector, normalized.
+// roughness - material roughness, in [0, 1] (at this fragment; most commonly, from Roughness texture).
+float OrenNayarDiffuse( vec3 N, vec3 V, vec3 L, float roughness ) {
+	// float N_dot_L = max( 0.0, dot( N, L ) );  // How much does (N)ormal direction vector coincide with (L)ight vector.
+	float N_dot_L = dot( N, L );  // How much does (N)ormal direction vector coincide with (L)ight vector.
+	float N_dot_V = dot( N, V );  // How much does (N)ormal direction vector coincide with (V)iew vector.
+
+	if ( N_dot_L < 0.0 ) {
+		return 0.0;
+	}
+
+	// Calculate the angle between the view and light directions
+	vec3 L_projected = normalize( L - N_dot_L * N );
+	vec3 V_projected = normalize( V - N_dot_V * N );
+	float cos_phi = dot( L_projected, V_projected );
+
+#if OREN_NAYAR_TRIGONOMETRIC
+	float theta_L = acos( N_dot_L );
+	float theta_V = acos( N_dot_V );
+	float sin_alpha = sin( max( theta_L, theta_V ) );
+	float tan_beta = tan( min( theta_L, theta_V ) );
+#else
+	// For any angle θ, points on the unit circle satisfy:
+	// 1. x = cos( θ )
+	// 2. y = sin( θ )
+	// 3. x^2 + y^2 = 1
+	// Therefore:  cos^2( θ ) + sin^2( θ ) = 1
+	// Both `dot( N, L )` and `dot( N, V )` produce cosine results -
+	//   there is no explicit angle here; it is "baked" implicitly in
+	//   a relationship between two vectors.
+	//
+	// This switch of angles prevents the approximation from falling apart:
+	//   at grazing angles, while viewed from the light direction, the diffuse lighting
+	//   produces brighter pixels while introducing black pixel areas at the same time.
+	// It is an issue of computing at extremely low float values, which results in
+	//   floating point precision errors.  This is exactly why and how we prevent this.
+	float cos_larger = max( N_dot_L, N_dot_V );
+	float cos_smaller = min( N_dot_L, N_dot_V );
+
+	// sin( θ ) = sqrt( 1.0 - cos^2( θ ) )
+	float sin_alpha = sqrt( 1.0  -  cos_smaller * cos_smaller );
+	// tan( θ ) = sin( θ ) / cos( θ ) = sqrt( 1.0 - cos^2( θ ) )  /  cos( θ )
+	// float tan_beta = sqrt( 1.0  -  cos_larger * cos_larger )  /  max( 1e-6, cos_larger );
+	float tan_beta = sqrt( 1.0  -  cos_larger * cos_larger )  /  cos_larger;
+#endif
+
+	// Sigma: Roughness parameter (in radians: 0 = smooth, PI / 2 = very rough).
+	// Map Roughness to `sigma`: [0, 1] -> [0, PI/2] or [0, ~1.57]
+	// Since `sigma` is actually squared in the equations, it is best to square Roughness too to accommodate for that.
+	// Then, the mapping will be perceptually linear.
+	float sigma = ( roughness * roughness ) * PI_OVER_TWO;  // `roughness^2 * ( PI / 2.0 )`
+	// float sigma = roughness * PI_OVER_TWO;
+	float sigma_2 = sigma * sigma;
+
+	// Oren-Nayar coefficients A and B.
+	float A = 1.0 - 0.5 * ( sigma_2 / ( sigma_2 + 0.33 ) );
+	float B = 0.45 * ( sigma_2 / ( sigma_2 + 0.09 ) );
+
+	// The final Oren-Nayar diffuse term
+	return N_dot_L * ( A + B * max( 0.0, cos_phi ) * sin_alpha * tan_beta );
+}
+
 void main()
 {
 	// Sample fragment data from G-Buffer textures.
@@ -192,7 +265,10 @@ void main()
 		// -1 (180 degrees)  ->  Light comes from _behind_ the surface, inverted diffuse effect (-100%).
 		//
 		// Light coming from behind should not impact visible surface, that's why we clamp negatives to 0.
-		float diffuse_term = max( dot( normal, light_direction ), 0.0 );
+		// Convert Specular value to Roughness.
+		// They both describe the same physical property, just from different ends, so we can simply invert the value.
+		float roughness = 1.0 - specular;
+		float diffuse_term = OrenNayarDiffuse( normal, view_direction, light_direction, roughness );
 
 		vec3 diffuse_light = diffuse_term * diffuse * light_color;
 		final_color += diffuse_light * light_intensity * attenuation;
