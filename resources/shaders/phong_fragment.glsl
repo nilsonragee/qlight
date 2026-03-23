@@ -53,6 +53,84 @@ layout ( std140, binding = 0 ) uniform Uniform_Buffer_Lights {
 	uint lights_count;
 } ubo_lights;
 
+// sRGB to Linear
+vec3 SRGBToLinear( vec3 srgb ) {
+	// The inverse of linear -> non-linear sRGB conversion.
+	// For detailed explanation, look at the other function.
+
+	// `low` - formula used for close to black color values in the range of: [0.0, 0.0031308]
+	// `x * 12.92`
+    vec3 low = srgb / 12.92;
+    // `high` - formula used for the rest of color values in the range of: (0.0031308, 1.0]
+    // `1.055 * x ^ ( 1 / 2.4 ) - 0.055`
+    vec3 high = pow( ( srgb + 0.055 ) / 1.055, vec3( 2.4 ) );
+    // `cutoff` - a "switch" between two formulas:
+    //   For `step( x, y )`:
+    //   - If `x < y`, return 0.0
+    //   - If `x >= y`, return 1.0
+    vec3 cutoff = step( vec3( 0.04045 ), srgb );
+    // Interpolate/"Mix" the calculated values using the `cutoff` weight/multiplier:
+    //   For `mix( x, y, a )`, the computation formula is: `x * (1 - a)  +  y * a`, so:
+    //   - If `cutoff = 0.0`, then `x * (1 - 0)  +  y * 0  =  1x + 0y  =  x`. The output is `low` result.
+    //   - If `cutoff = 1.0`, then `x * (1 - 1)  +  y * 1  =  0x + 1y  =  y`. The output is `high` result.
+    return mix( low, high, cutoff );
+}
+
+// Linear to sRGB
+vec3 LinearToSRGB( vec3 linear ) {
+	// `low` - formula used for close to black color values in the range of: [0.0, 0.0031308]
+	// Interpolates linearly from 0.0031308 to 0.0 as the general sRGB gamma curve does not
+	//   actually reach the 0.0 value, clamping dark values to 0.00083381 and effectively losing
+	//   the color information in the darks.  Thus, this formula is set to be used at values 0.0031308
+	//   and lower as it provides better precision and ensures the darks are preserved as much as possible.
+	// `x * 12.92`
+    vec3 low = linear * 12.92;
+    // `high` - formula used for the rest of color values in the range of: (0.0031308, 1.0]
+    // It uses the inverted general sRGB gamma curve which utilizes human eye brightness perception to
+    //   encode lower precision in highlights (closer to 1) and higher precision in shadows (closer to 0).
+    // If you plot the gamma curve on graph, you can then look at the "trajectory" of the curve:
+    //   the steeper the angle of the curve is, the more "value space" the encoding allocates for this range.
+    // The encoding algorithm can be simply explained by taking the input and output range value mappings:
+    //   If we take values in the range of [0, 0.1], which are the color values for dark areas and shadows, then:
+    //   - with Linear encoding, [0, 0.1] maps to [0, 0.1] - output value/point ends up
+    //       exactly where the input value/point was.
+    //     The input  value space for this range is: `(0.1 - 0) * 100 = 10.0%`.
+    //     The output value space for this range is: `(0.1 - 0) * 100 = 10.0%`.
+    //     They match exactly! There is no change of value space allocation.
+	//   - with sRGB gamma power encoding, [0, 0.1] maps to [0, ~0.35] - output value/point ends up
+	//       way more farther ahead compared to input.
+	//     The input  value space for this range is: `(0.1  - 0) * 100 = 10.0%`.
+	//     The output value space for this range is: `(0.35 - 0) * 100 = 35.0%`.
+	//     So, for the same range of values the gamma encoding has `35 - 10 = 25%` more values
+	//       than linear encoding to represent the same values.  That is where the increased precision comes from.
+	//   If we take values in the range of [0.6, 1], which are the color values for bright areas and highlights, then:
+	//   - with Linear encoding, [0.6, 1] maps to [0.6, 1] - no change, exactly as is.
+	//     Input  value space: `(1 - 0.6) * 100 = 40.0%`.
+	//     Output value space: `(1 - 0.6) * 100 = 40.0%`.
+	//   - with sRGB gamma power encoding, [0.6, 1] maps to [~0.8, 1] - the output range became smaller.
+	//     Input  value space: `(1 - 0.6) * 100 = 40.0%`.
+	//     Output value space: `(1 - 0.8) * 100 = 20.0%`.
+	//     As you can already tell, the gamma encoding provides `40 - 20 = 20%` less values
+	//       than linear encoding.  So, with gamma encoding brighter values get less precision.
+	// The "value space" concept might not be apparent at first because mathematically there is no limit in precision -
+	//   you can have as much of the fractional digits as you want.  In the real world, however, there is no such luxury.
+	//   For example, 32-bit float can store up to 15 fractional digits, but still, it cannot represent all values of that range.
+	//   Then, think of the actual RGB 8-bit color where there are only 255 values per channel to represent the same we had in float.
+	//   That is what it comes to and the difference it makes is gigantic.
+    // `1.055 * x ^ ( 1 / 2.4 ) - 0.055`
+    vec3 high = 1.055 * pow( linear, vec3( 1.0 / 2.4 ) ) - 0.055;
+    // `cutoff` - a "switch" between two formulas:
+    //   For `step( x, y )`:
+    //   - If `x < y`, return 0.0
+    //   - If `x >= y`, return 1.0
+    vec3 cutoff = step( vec3( 0.0031308 ), linear );
+    // Interpolate/"Mix" the calculated values using the `cutoff` weight/multiplier:
+    //   For `mix( x, y, a )`, the computation formula is: `x * (1 - a)  +  y * a`, so:
+    //   - If `cutoff = 0.0`, then `x * (1 - 0)  +  y * 0  =  1x + 0y  =  x`.  The function returns `low` value.
+    //   - If `cutoff = 1.0`, then `x * (1 - 1)  +  y * 1  =  0x + 1y  =  y`.  The function returns `high` value.
+    return mix( low, high, cutoff );
+}
+
 void main()
 {
 	// Sample fragment data from G-Buffer textures.
@@ -142,7 +220,8 @@ void main()
 	}
 
 	// TODO: Do it in a separate post-processing pass.
-	const float gamma = 2.2;
-	final_color = pow( final_color, vec3( 1.0 / gamma ) );
+	// const float gamma = 2.2;
+	// final_color = pow( final_color, vec3( 1.0 / gamma ) );
+	final_color = LinearToSRGB( final_color );
 	fragment_color = vec4( final_color.rgb, 1.0 );
 }
