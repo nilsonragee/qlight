@@ -139,7 +139,7 @@ vec3 LinearToSRGB( vec3 linear ) {
 
 #define OREN_NAYAR_TRIGONOMETRIC 0
 
-// Oren-Nayar shading model / BRDF
+// Oren-Nayar diffuse shading / BRDF
 // N - surface Normal direction vector, normalized.
 // V - View direction vector, normalized.
 // L - Light direction vector, normalized.
@@ -204,6 +204,37 @@ float OrenNayarDiffuse( vec3 N, vec3 V, vec3 L, float roughness ) {
 	return N_dot_L * ( A + B * max( 0.0, cos_phi ) * sin_alpha * tan_beta );
 }
 
+// Lambertian diffuse shading / BRDF
+// N - surface Normal direction vector, normalized.
+// L - Light direction vector, normalized.
+float LambertianDiffuse( vec3 N, vec3 L ) {
+	float N_dot_L = dot( N, L );  // How much does (N)ormal direction vector coincide with (L)ight vector.
+	// --- Old comment with explanation of dot product
+	// `dot( N, L )` calculates how similar the vector directions are.
+	// The result takes "scaling" into account, for example:
+	//   `dot( vec2( 3, 0 ), vec2( 4, 0 ) ) == 12`.
+	// If the vectors are normalized, then the dot product is normalized as well in range [-1; 1], where:
+	//  1  ->  Vectors are pointing in the same exact direction.
+	//  0  ->  Vectors are pointing in perpendicular directions of each other.
+	// -1  ->  Vectors are pointing in opposite directions of each other.
+	// Some examples:
+	// `dot( vec2( 1, 0 ), vec2(  1, 0 ) ) == 1`.
+	// `dot( vec2( 1, 0 ), vec2(  0, 1 ) ) == 0`.
+	// `dot( vec2( 1, 0 ), vec2( -1, 0 ) ) == -1`.
+	//
+	// In the case of comparing light direction and surface normal direction:
+	//  1 (  0 degrees)  ->  Light hits the surface _directly_, full diffuse effect (100%).
+	//  0 ( 90 degrees)  ->  Light is _parallel_ to the surface, no diffuse effect (0%).
+	// -1 (180 degrees)  ->  Light comes from _behind_ the surface, inverted diffuse effect (-100%).
+	//
+	// Light coming from behind should not impact visible surface, that's why we clamp negatives to 0.
+	// ---
+	// `N_dot_L` being `< 0.0` means the (L)ight's direction points in the opposite way of (N)ormal,
+	//   which in turn means the (L)ight is behind the surface.
+	// To prevent this, we clamp the lower bound to 0.0 so the fragment does not get lit.
+	return max( 0.0, N_dot_L );
+}
+
 void main()
 {
 	// Sample fragment data from G-Buffer textures.
@@ -247,28 +278,11 @@ void main()
 
 		/* Diffuse light */
 
-		// `dot( normal, light_direction )` calculates how similar the vector directions are.
-		// The result takes "scaling" into account, for example:
-		//   `dot( vec2( 3, 0 ), vec2( 4, 0 ) ) == 12`.
-		// If the vectors are normalized, then the dot product is normalized as well in range [-1; 1], where:
-		//  1  ->  Vectors are pointing in the same exact direction.
-		//  0  ->  Vectors are pointing in perpendicular directions of each other.
-		// -1  ->  Vectors are pointing in opposite directions of each other.
-		// Some examples:
-		// `dot( vec2( 1, 0 ), vec2(  1, 0 ) ) == 1`.
-		// `dot( vec2( 1, 0 ), vec2(  0, 1 ) ) == 0`.
-		// `dot( vec2( 1, 0 ), vec2( -1, 0 ) ) == -1`.
-		//
-		// In the case of comparing light direction and surface normal direction:
-		//  1 (  0 degrees)  ->  Light hits the surface _directly_, full diffuse effect (100%).
-		//  0 ( 90 degrees)  ->  Light is _parallel_ to the surface, no diffuse effect (0%).
-		// -1 (180 degrees)  ->  Light comes from _behind_ the surface, inverted diffuse effect (-100%).
-		//
-		// Light coming from behind should not impact visible surface, that's why we clamp negatives to 0.
 		// Convert Specular value to Roughness.
 		// They both describe the same physical property, just from different ends, so we can simply invert the value.
 		float roughness = 1.0 - specular;
 		float diffuse_term = OrenNayarDiffuse( normal, view_direction, light_direction, roughness );
+		// float diffuse_term = LambertianDiffuse( normal, light_direction );
 
 		vec3 diffuse_light = diffuse_term * diffuse * light_color;
 		final_color += diffuse_light * light_intensity * attenuation;
